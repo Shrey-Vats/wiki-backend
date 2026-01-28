@@ -1,0 +1,67 @@
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::{
+    common::error::{AppError, NotFoundError},
+    modules::user::{
+        errors::UserValidationError, model::{LoginCredentials, SignUpCredentials, User}, repository::UserRepo
+    }, utils::jwt::create_jwt_token,
+};
+
+#[derive(Debug, Clone)]
+pub struct UserService {
+    pool: PgPool,
+}
+
+impl UserService {
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+
+    pub async fn create(&self, user: SignUpCredentials) -> Result<User, AppError> {
+        
+        let option_user = UserRepo::fetch_by_email(&self.pool, &user.email)
+            .await
+            .map_err(|_| AppError::DbError)?;
+
+        if option_user.is_some(){
+            return Err(AppError::UserValidation(UserValidationError::UserAlreadyExits))
+        }
+        
+        let created_user = UserRepo::create(&self.pool, &user.name, &user.email, &user.password)
+            .await
+            .map_err(|_| AppError::DbError)?;
+
+        Ok(created_user)
+    }
+
+    pub async fn login(&self, user: LoginCredentials) -> Result<User, AppError> {
+        let db_user = UserRepo::fetch_by_email(&self.pool, &user.email)
+            .await
+            .map_err(|_| AppError::DbError)?
+            .ok_or_else(|| AppError::NotFound(NotFoundError::UserNotFound))?;
+
+        if user.password != db_user.password {
+            return Err(AppError::UserValidation(UserValidationError::InvalidPassword))
+        }
+
+        Ok(db_user)
+    }
+  
+    pub async fn delete(&self, user_id: Uuid) -> Result<(), AppError> {
+        UserRepo::delete(&self.pool, user_id)
+            .await
+            .map_err(|_| AppError::DbError)?;
+
+        Ok(())
+    }
+  
+    pub async fn get(&self, user_id: Uuid) -> Result<User, AppError> {
+        let user = UserRepo::fetch_by_id(&self.pool, user_id)
+            .await
+            .map_err(|_| AppError::DbError)?
+            .ok_or_else(|| AppError::NotFound(NotFoundError::UserNotFound))?;
+
+        Ok(user)
+    }
+}

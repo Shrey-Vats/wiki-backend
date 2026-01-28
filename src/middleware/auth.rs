@@ -5,7 +5,7 @@ use axum::{
     response::{Response, Result},
 };
 use axum_extra::extract::CookieJar;
-use crate::{state::{AppState, UserId}, utils::verify_jwt_token};
+use crate::{modules::user::model::UserId, state::AppState, utils::jwt::verify_jwt_token};
 
 pub async fn auth_middleware(
     State(state): State<AppState>,
@@ -19,7 +19,7 @@ pub async fn auth_middleware(
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
 
-    let token_data = verify_jwt_token(&token, state).map_err(|_| StatusCode::UNAUTHORIZED)?;
+    let token_data = verify_jwt_token(&token, state.jwt_decoding).map_err(|_| StatusCode::UNAUTHORIZED)?;
    
     req.extensions_mut().insert(UserId(token_data.user_id));
 

@@ -1,8 +1,3 @@
-use axum::{
-    Json,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -12,29 +7,9 @@ pub struct ApiResponse<T> {
     pub data: Option<T>,
 }
 
-pub fn ok<T>(message: &'static str, data: T, status: StatusCode) -> Response
-where
-    T: Serialize,
-{
-    (
-        status,
-        Json(ApiResponse::<T> {
-            message,
-            data: Some(data),
-            success: true,
-        }),
-    )
-        .into_response()
+impl<T> ApiResponse<T> {
+    pub fn success(message: &'static str, data: T)-> Self {
+        Self {message, data: Some(data), success: true }
+    }
 }
 
-pub fn err(message: &'static str, status: StatusCode) -> Response {
-    (
-        status,
-        Json(ApiResponse::<()> {
-            message,
-            data: None,
-            success: false,
-        }),
-    )
-        .into_response()
-}

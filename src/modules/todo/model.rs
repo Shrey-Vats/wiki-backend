@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::modules::todo::errors::TodoValidationError;
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Todo {
     pub id: Uuid,
     pub user_id: Uuid,

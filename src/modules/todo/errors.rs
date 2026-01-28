@@ -5,5 +5,5 @@ pub enum TodoValidationError {
     #[error("Todo must be 5 cherecters long")]
     TodoTooShort,
     #[error("Description must be 5 cherecters long")]
-    DescriptionTooShort
+    DescriptionTooShort,
 }
