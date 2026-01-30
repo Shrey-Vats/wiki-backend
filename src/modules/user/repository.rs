@@ -12,7 +12,7 @@ impl UserRepo {
             r#"
         INSERT INTO users (name, email, password)
         VALUES ($1, $2, $3)
-        RETURNING id, name, email, password
+        RETURNING id, name, email, password, is_public
         "#,
             name,
             email,
@@ -28,7 +28,7 @@ impl UserRepo {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, name, email, password
+        SELECT id, name, email, password, is_public
         FROM users
         WHERE id = $1
         "#,
@@ -59,7 +59,7 @@ impl UserRepo {
         let user = sqlx::query_as!(
             User,
             r#"
-        SELECT id, name, email, password
+        SELECT id, name, email, password, is_public
         FROM users
         WHERE email = $1
         "#,

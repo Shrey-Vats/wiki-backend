@@ -5,7 +5,7 @@ use crate::{
     common::error::{AppError, NotFoundError},
     modules::user::{
         errors::UserValidationError, model::{LoginCredentials, SignUpCredentials, User}, repository::UserRepo
-    }, utils::jwt::create_jwt_token,
+    },
 };
 
 #[derive(Debug, Clone)]

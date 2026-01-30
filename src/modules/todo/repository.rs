@@ -1,7 +1,7 @@
 use sqlx::{PgPool, Postgres, QueryBuilder, Result};
 use uuid::Uuid;
 
-use crate::modules::todo::model::{NewTodo, Todo, TodoResponse};
+use crate::modules::todo::model::{Category, CreateCategoryDto, CreateTagDto, NewTodo, TagTodo, Tags, Todo, TodoResponse};
 
 pub struct TodoRepo;
 
@@ -118,4 +118,139 @@ impl TodoRepo {
 
         Ok(updated_todo)
     }
+
+    //tags
+    pub async fn create_tag(pool: &PgPool, user_id: Uuid, tag: CreateTagDto) -> Result<Tags> {
+        let tag = sqlx::query_as!(
+            Tags,
+            r#"
+            INSERT INTO tags (user_id, name, slug)
+            VALUES ($1, $2, $3)
+            RETURNING id, user_id, name, slug 
+            "#,
+            user_id,
+            tag.name,
+            tag.slug
+        ).fetch_one(pool).await?;
+
+        Ok(tag)
+    }
+
+    pub async fn fetch_all_tags(pool: &PgPool, user_id: Uuid) -> Result<Vec<CreateTagDto>> {
+        let tags = sqlx::query_as!(
+            CreateTagDto,
+            r#"
+            SELECT name, slug 
+            FROM tags
+            WHERE user_id = $1
+            "#,
+            user_id
+        ).fetch_all(pool).await?;
+
+        Ok(tags)
+    }
+
+    pub async fn delete_tag(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<()> {
+        sqlx::query_as!(
+            CreateTagDto,
+            r#"
+            DELETE FROM tags
+            WHERE slug = $1 AND user_id = $2
+            "#,
+            slug,
+            user_id
+        ).fetch_one(pool).await?;
+
+        Ok(())
+    }
+
+    pub async fn create_categories(pool: &PgPool, user_id: Uuid, category: CreateCategoryDto) -> Result<Category> {
+        let category = sqlx::query_as!(
+            Category,
+            r#"
+            INSERT INTO categories (user_id, name, slug)
+            VALUES ($1, $2, $3)
+            RETURNING id, user_id, name, slug
+            "#,
+            user_id,
+            category.name,
+            category.slug
+        ).fetch_one(pool).await?;
+
+        Ok(category)
+    }
+
+    pub async fn fetch_all_categories(pool: &PgPool, user_id: Uuid) -> Result<Vec<CreateCategoryDto>> {
+        let categories = sqlx::query_as!(
+            CreateCategoryDto,
+            r#"
+            SELECT name, slug
+            FROM categories
+            WHERE user_id = $1
+            "#,
+            user_id
+        ).fetch_all(pool).await?;
+
+        Ok(categories)
+    }
+
+    pub async fn delete_categories(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<()> {
+        sqlx::query_as!(
+            CreateCategoryDto,
+            r#"
+            DELETE FROM categories
+            WHERE slug = $1 AND user_id = $2 
+            "#,
+            slug,
+            user_id
+        ).fetch_one(pool).await?;
+
+        Ok(())
+    }
+
+    pub async fn create_tag_todo(pool: &PgPool, todo_id: Uuid, tag_id: Uuid ) -> Result<TagTodo> {
+        let tag_todo = sqlx::query_as!(
+            TagTodo,
+            r#"
+            INSERT INTO tag_todo (todo_id, tag_id) 
+            VALUES ($1, $2)
+            RETURNING todo_id, tag_id
+            "#,
+            todo_id,
+            tag_id
+        ).fetch_one(pool).await?;
+
+        Ok(tag_todo)
+    }
+
+    pub async fn fetch_id_from_tag_slug(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<Option<Tags>>{
+        let tag = sqlx::query_as!(
+            Tags,
+            r#"
+            SELECT id, user_id, name, slug 
+            From tags
+            WHERE slug = $1 AND user_id = $2
+            "#,
+            slug,
+            user_id
+        ).fetch_optional(pool).await?;
+
+        Ok(tag)
+    }
+
+    pub async fn fetch_id_from_category_slug(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<Option<Category>>{
+        let category = sqlx::query_as!(
+            Category,
+            r#"
+            SELECT id, user_id, name, slug 
+            From tags
+            WHERE slug = $1 AND user_id = $2
+            "#,
+            slug,
+            user_id
+        ).fetch_optional(pool).await?;
+
+        Ok(category)
+    }
+
 }

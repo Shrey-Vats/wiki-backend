@@ -32,7 +32,6 @@ impl IntoResponse for AppError {
             AppError::UserValidation(e) => (StatusCode::BAD_REQUEST, e.to_string())
 
         };
-
         (
             status,
             Json(ApiResponse::<()> {
