@@ -20,7 +20,11 @@ pub enum NotFoundError {
      #[error("Todo don't found")]
     TodoNotFound,
      #[error("User Not found")]
-    UserNotFound
+    UserNotFound,
+     #[error("Tag aren't found")]
+    TagNotFound,
+     #[error("Category not found")]
+    CategoryNotFound
 }
 
 impl IntoResponse for AppError {

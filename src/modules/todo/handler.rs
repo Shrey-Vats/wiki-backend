@@ -11,11 +11,12 @@ use crate::{
     modules::{
         todo::{
             model::{
-                CategorySlug, CreateCategoryDto, CreateTagDto, CreateTodoDto, NewTodo, TagSlug, UpdateTodoCredentials
+                CreateCategoryDto, CreateTagDto, CreateTodoDto, NewTodo,
+                TodoResponse, UpdateTodoCredentials,
             },
             service::TodoService,
         },
-        user::model::UserId,
+        user::{model::UserId},
     },
     state::AppState,
 };
@@ -27,11 +28,38 @@ pub async fn create_todo_handler(
     Json(dto): Json<CreateTodoDto>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
     let new_todo: NewTodo = dto.try_into()?;
-    let todo = state.todo_service.create_todo(user_id.0, new_todo).await?;
+    let mut tags: Vec<CreateTagDto> = Vec::new();
+
+    let todo = state.todo_service.create_todo(user_id.0, &new_todo).await?;
+
+    for i in new_todo.tags {
+        let tag = state.todo_service.fetch_tag_slug(user_id.0, &i).await?;
+        
+        state.todo_service.create_tag_todo(&todo.id, &tag.id).await?;
+        
+        let create_dto = CreateTagDto {
+            name: tag.name,
+            slug: tag.slug
+        };
+
+        tags.push(create_dto);
+    }
+
+    let category = state.todo_service.fetch_category(&todo.category_id).await?;
+
+    let todo_response = TodoResponse {
+        id: todo.id,
+        todo: todo.todo,
+        description: todo.description,
+        is_done: todo.is_done,
+        category: category,
+        tags: tags,
+        created_at: todo.created_at,
+    };
 
     Ok(Json(ApiResponse::success(
         "User created Successfully",
-        todo,
+        todo_response,
     )))
 }
 
@@ -39,11 +67,11 @@ pub async fn toggle_todo_handler(
     State(state): State<AppState>,
     Path(todo_id): Path<Uuid>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    let todo = state.todo_service.toggle(todo_id).await?;
+    state.todo_service.toggle(todo_id).await?;
 
     Ok(Json(ApiResponse::success(
         "Todo Status Updated successfully",
-        todo,
+        None::<()>,
     )))
 }
 
@@ -86,11 +114,12 @@ pub async fn update_todo_handler(
     Path(todo_id): Path<Uuid>,
     Json(update): Json<UpdateTodoCredentials>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    let todo = state.todo_service.update(update, todo_id).await?;
+     state.todo_service.update(update, todo_id).await?;
 
-    Ok(Json(ApiResponse::success("Todo fetch successfuly", todo)))
+    Ok(Json(ApiResponse::success("Todo fetch successfuly", None::<()>)))
 }
 
+#[debug_handler]
 pub async fn create_tag_handler(
     State(state): State<AppState>,
     Extension(user_id): Extension<UserId>,
@@ -121,9 +150,9 @@ pub async fn fetch_all_tags_handler(
 pub async fn delete_tag_handler(
     State(state): State<AppState>,
     Extension(user_id): Extension<UserId>,
-    Json(slug): Json<TagSlug>,
+    Path(slug): Path<String>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    TodoService::delete_tag(&state.todo_service, slug.slug, user_id.0).await?;
+    TodoService::delete_tag(&state.todo_service, slug, user_id.0).await?;
 
     Ok(Json(ApiResponse::success(
         "Tag successfuly deleted",
@@ -135,28 +164,38 @@ pub async fn create_category_handler(
     State(state): State<AppState>,
     Extension(user_id): Extension<UserId>,
     Json(dto): Json<CreateCategoryDto>,
-) -> Result<Json<ApiResponse<impl serde::Serialize >>, AppError> {
+) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
     let new_category_playload = CreateCategoryDto::validation(dto)?;
 
-    let category = TodoService::create_category(&state.todo_service, user_id.0, new_category_playload).await?;
+    let category =
+        TodoService::create_category(&state.todo_service, user_id.0, new_category_playload).await?;
 
-    Ok(Json(ApiResponse::success("Category created successfuly", category)))
+    Ok(Json(ApiResponse::success(
+        "Category created successfuly",
+        category,
+    )))
 }
 
 pub async fn fetch_all_categories_handler(
     State(state): State<AppState>,
-    Extension(user_id): Extension<UserId>
+    Extension(user_id): Extension<UserId>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
     let categories = TodoService::fetch_all_categories(&state.todo_service, user_id.0).await?;
 
-    Ok(Json(ApiResponse::success("Fetch all categories successfully", categories)))
+    Ok(Json(ApiResponse::success(
+        "Fetch all categories successfully",
+        categories,
+    )))
 }
 
 pub async fn delete_category_handler(
     State(state): State<AppState>,
     Extension(user_id): Extension<UserId>,
-    Json(slug): Json<CategorySlug>
+    Path(slug): Path<String>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    TodoService::delete_category(&state.todo_service, slug.slug, user_id.0).await?;
-    Ok(Json(ApiResponse::success("Category deleted successfuly", None::<()>)))
+    TodoService::delete_category(&state.todo_service, slug, user_id.0).await?;
+    Ok(Json(ApiResponse::success(
+        "Category deleted successfuly",
+        None::<()>,
+    )))
 }
