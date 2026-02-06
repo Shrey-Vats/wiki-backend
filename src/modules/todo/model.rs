@@ -10,31 +10,31 @@ pub struct Todo {
     pub id: Uuid,
     pub user_id: Uuid,
     pub category_id: Uuid,
-    pub todo: String,
+    pub title: String,
     pub description: String,
-    pub is_done: bool,
     pub created_at: PrimitiveDateTime,
+    pub updated_at: PrimitiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]
 pub struct TodoCred {
     pub id: Uuid,
-    pub todo: String,
+    pub title: String,
     pub description: String,
     pub category_id: Uuid,
-    pub is_done: bool,
     pub created_at: PrimitiveDateTime,
+    pub updated_at: PrimitiveDateTime
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TodoResponse {
     pub id: Uuid,
-    pub todo: String,
+    pub title: String,
     pub description: String,
     pub category: CreateCategoryDto,
-    pub is_done: bool,
+    pub tags: Vec<CreateTagDto>,
     pub created_at: PrimitiveDateTime,
-    pub tags: Vec<CreateTagDto>
+    pub updated_at: PrimitiveDateTime
 }
 
 #[derive(FromRow, Serialize)]
@@ -45,22 +45,6 @@ pub struct Tags {
     pub slug: String,
 }
 
-#[derive(FromRow, Serialize)]
-pub struct TodoFullRows {
-    pub todo_id: Uuid,
-    pub todo_title: String,
-    pub todo_description: String,
-    pub is_done: bool,
-    pub created_at: PrimitiveDateTime,
-
-    pub category_id: Uuid,
-    pub category_name: String,
-    pub category_slug: String,
-
-    pub tag_id: Option<Uuid>,
-    pub tag_name: Option<String>,
-    pub tag_slug: Option<String>
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateTagDto {

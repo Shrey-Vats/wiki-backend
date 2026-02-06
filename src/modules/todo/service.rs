@@ -31,42 +31,6 @@ impl TodoService {
         Ok(todo)
     }
 
-    pub async fn toggle(&self, todo_id: Uuid) -> Result<(), AppError> {
-        TodoRepo::toggle(&self.pool, todo_id)
-            .await
-            .map_err(|_| AppError::DbError)?
-            .ok_or_else(|| AppError::NotFound(NotFoundError::TodoNotFound))?;
-
-        Ok(())
-    }
-
-    pub async fn list_todos(&self, user_id: Uuid) -> Result<Vec<TodoResponse>, AppError> {
-
-        let rows = TodoRepo::fetch_all(&self.pool, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
-
-        let mut map: HashMap<Uuid, TodoResponse> = HashMap::new();
-
-        for r in rows {
-            let entry = map.entry(r.todo_id).or_insert(TodoResponse {
-                id: r.todo_id,
-                todo: r.todo_title,
-                description: r.todo_description,
-                category: CreateCategoryDto { name: r.category_name, slug: r.category_slug },
-                is_done: r.is_done,
-                created_at: r.created_at,
-                tags: Vec::new()
-            });
-
-            if let (Some(_tag_id), Some(tag_name), Some(tag_slug)) = (r.tag_id, r.tag_name, r.tag_slug) {
-                entry.tags.push(CreateTagDto { name: tag_name, slug: tag_slug });
-            }
-        }
-
-        Ok(map.into_values().collect())
-    }
-
     pub async fn get(&self, todo_id: Uuid) -> Result<TodoResponse, AppError> {
         let todo = TodoRepo::fetch(&self.pool, todo_id)
             .await
@@ -78,12 +42,12 @@ impl TodoService {
 
         let return_todo = TodoResponse {
             id: todo.id,
-            todo: todo.todo,
+            title: todo.title,
             description: todo.description,
-            is_done: todo.is_done,
             tags: tags,
             category: category,
             created_at: todo.created_at,
+            updated_at: todo.updated_at
         };
 
         Ok(return_todo)

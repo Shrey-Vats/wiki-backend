@@ -29,8 +29,9 @@ pub async fn create_todo_handler(
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
     let new_todo: NewTodo = dto.try_into()?;
     let mut tags: Vec<CreateTagDto> = Vec::new();
-
+    
     let todo = state.todo_service.create_todo(user_id.0, &new_todo).await?;
+    // let daily_progress_todo  
 
     for i in new_todo.tags {
         let tag = state.todo_service.fetch_tag_slug(user_id.0, &i).await?;
@@ -49,12 +50,12 @@ pub async fn create_todo_handler(
 
     let todo_response = TodoResponse {
         id: todo.id,
-        todo: todo.todo,
+        title: todo.title,
         description: todo.description,
-        is_done: todo.is_done,
         category: category,
         tags: tags,
         created_at: todo.created_at,
+        updated_at: todo.updated_at
     };
 
     Ok(Json(ApiResponse::success(
@@ -63,29 +64,16 @@ pub async fn create_todo_handler(
     )))
 }
 
-pub async fn toggle_todo_handler(
-    State(state): State<AppState>,
-    Path(todo_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    state.todo_service.toggle(todo_id).await?;
-
-    Ok(Json(ApiResponse::success(
-        "Todo Status Updated successfully",
-        None::<()>,
-    )))
-}
-
-pub async fn list_todos_handler(
-    State(state): State<AppState>,
-    Extension(user_id): Extension<UserId>,
-) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    let todos = state.todo_service.list_todos(user_id.0).await?;
-
-    Ok(Json(ApiResponse::success(
-        "All todos fetch successfuly",
-        todos,
-    )))
-}
+// pub async fn list_todos_handler(
+//     State(state): State<AppState>,
+//     Extension(user_id): Extension<UserId>,
+// ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+//     let todos = state.todo_service.list_todos(user_id.0).await?;
+//     Ok(Json(ApiResponse::success(
+//         "All todos fetch successfuly",
+//         todos,
+//     )))
+// }
 
 pub async fn delete_todo_handler(
     State(state): State<AppState>,

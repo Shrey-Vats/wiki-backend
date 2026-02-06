@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{PgPool};
 use uuid::Uuid;
 
-use crate::modules::{todo::service::TodoService, user::service::UserService};
+use crate::modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -11,7 +11,8 @@ pub struct AppState {
     pub jwt_encoding: EncodingKey,
     pub jwt_decoding: DecodingKey,
     pub todo_service: TodoService,
-    pub user_service: UserService
+    pub user_service: UserService,
+    pub progress_service: ProgressService
 }
 
 

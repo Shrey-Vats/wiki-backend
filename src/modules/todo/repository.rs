@@ -2,7 +2,7 @@ use sqlx::{PgPool, Postgres, QueryBuilder, Result};
 use uuid::Uuid;
 
 use crate::{common::error::AppError, modules::todo::model::{
-    Category, CreateCategoryDto, CreateTagDto, NewTodo, TagTodo, Tags, Todo, TodoCred, TodoFullRows,
+    Category, CreateCategoryDto, CreateTagDto, NewTodo, TagTodo, Tags, Todo, TodoCred,
 }};
 
 pub struct TodoRepo;
@@ -12,9 +12,9 @@ impl TodoRepo {
         let todo = sqlx::query_as!(
             Todo,
             r#"
-        INSERT INTO todos (user_id, todo, description, category_id)
+        INSERT INTO todos (user_id, title, description, category_id)
         VALUES ($1, $2, $3, $4)
-        RETURNING id, user_id, todo, description, is_done, created_at, category_id
+        RETURNING id, user_id, title, description, created_at, category_id, updated_at
         "#,
             user_id,
             new.todo,
@@ -27,62 +27,41 @@ impl TodoRepo {
         Ok(todo)
     }
 
-    pub async fn toggle(pool: &PgPool, todo_id: Uuid) -> Result<Option<TodoCred>> {
-        let todo = sqlx::query_as!(
-            TodoCred,
-            r#"
-        UPDATE todos
-        SET is_done = NOT is_done
-        WHERE id = $1
-        RETURNING id, todo, description, is_done, created_at, category_id
-        "#,
-            todo_id
-        )
-        .fetch_optional(pool)
-        .await?;
-
-        Ok(todo)
-    }
-
-    pub async fn fetch_all(pool: &PgPool, user_id: Uuid) -> Result<Vec<TodoFullRows>> {
-        let todos = sqlx::query_as!(
-            TodoFullRows,
-            r#"
-        SELECT
-            t.id AS todo_id,
-            t.todo AS todo_title,
-            t.description AS todo_description,
-            t.is_done,
-            t.created_at,
-
-            c.id AS category_id,
-            c.name AS category_name,
-            c.slug AS category_slug,
-
-            tg.id AS tag_id,
-            tg.name AS tag_name,
-            tg.slug AS tag_slug
-        
-        FROM todos t
-        JOIN categories c ON c.id = t.category_id
-        LEFT JOIN tag_todo tt ON tt.todo_id = t.id
-        LEFT JOIN tags tg ON tg.id = tt.tag_id
-        WHERE t.user_id = $1
-        ORDER BY t.created_at DESC
-        "#,
-            user_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(todos)
-    }
+    // pub async fn fetch_all(pool: &PgPool, user_id: Uuid) -> Result<Vec<TodoFullRows>> {
+    //     let todos = sqlx::query_as!(
+    //         TodoFullRows,
+    //         r#"
+    //     SELECT
+    //         t.id AS todo_id,
+    //         t.todo AS todo_title,
+    //         t.description AS todo_description,
+    //         t.is_done,
+    //         t.created_at,
+    //         c.id AS category_id,
+    //         c.name AS category_name,
+    //         c.slug AS category_slug,
+    //         tg.id AS tag_id,
+    //         tg.name AS tag_name,
+    //         tg.slug AS tag_slug       
+    //     FROM todos t
+    //     JOIN categories c ON c.id = t.category_id
+    //     LEFT JOIN tag_todo tt ON tt.todo_id = t.id
+    //     LEFT JOIN tags tg ON tg.id = tt.tag_id
+    //     WHERE t.user_id = $1
+    //     ORDER BY t.created_at DESC
+    //     "#,
+    //         user_id
+    //     )
+    //     .fetch_all(pool)
+    //     .await?;
+    //     Ok(todos)
+    // }
 
     pub async fn fetch(pool: &PgPool, todo_id: Uuid) -> Result<Option<TodoCred>> {
         let todo = sqlx::query_as!(
             TodoCred,
             r#"
-        SELECT id, todo, description, is_done, created_at, category_id
+        SELECT id, title, description, created_at, category_id, updated_at
         FROM todos
         WHERE id = $1
         "#,

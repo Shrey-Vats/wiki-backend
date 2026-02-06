@@ -1,8 +1,9 @@
 use std::{env};
 
-use crate::{ modules::{todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
-use axum::response::Result;
+use crate::{ modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
+use axum::{extract::{WebSocketUpgrade, ws::WebSocket}, response::{IntoResponse, Result}};
 use dotenvy::dotenv;
+use futures::StreamExt;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::PgPool;
 
@@ -15,6 +16,7 @@ mod modules;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     dotenv().ok();
 
     let db_url = env::var("DATABASE_URL")?;
@@ -27,7 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         jwt_decoding: DecodingKey::from_secret(secret.as_bytes()),
         jwt_encoding: EncodingKey::from_secret(secret.as_bytes()),
         todo_service: TodoService::new(pool.clone()),
-        user_service: UserService::new(pool)
+        user_service: UserService::new(pool.clone()),
+        progress_service: ProgressService::new(pool)
     };
 
     let app = create_app(state);
