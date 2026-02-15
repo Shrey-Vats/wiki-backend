@@ -4,9 +4,8 @@ use axum_macros::debug_handler;
 use tower_cookies::Cookie;
 
 use crate::{
-    common::{error::AppError, response::ApiResponse},
+    common::{error::{AppError, ValidationError}, response::ApiResponse},
     modules::user::{
-        errors::UserValidationError,
         model::{LoginCredentials, LoginDto, SignUpCredentials, SignUpDto, UserId},
     },
     state::AppState,
@@ -25,7 +24,7 @@ pub async fn create_user(
 
     let jwt = create_jwt_token(user.id, state.jwt_encoding)
         .await
-        .map_err(|_| AppError::UserValidation(UserValidationError::FailedToCreateToken))?;
+        .map_err(|_| AppError::Validation(ValidationError::FailedToCreateToken))?;
 
     let jar = cookies.add(Cookie::build(("jwt", jwt)).http_only(true).path("/"));
 
@@ -46,7 +45,7 @@ pub async fn login_user(
 
     let jwt = create_jwt_token(user.id, state.jwt_encoding)
         .await
-        .map_err(|_| AppError::UserValidation(UserValidationError::FailedToCreateToken))?;
+        .map_err(|_| AppError::Validation(ValidationError::FailedToCreateToken))?;
 
     let jar = cookies.add(Cookie::build(("jwt", jwt)).http_only(true).path("/"));
 

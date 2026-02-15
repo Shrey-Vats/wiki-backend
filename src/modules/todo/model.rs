@@ -3,7 +3,7 @@ use sqlx::prelude::FromRow;
 use time::PrimitiveDateTime;
 use uuid::Uuid;
 
-use crate::{common::error::AppError, modules::todo::errors::TodoValidationError};
+use crate::{common::error::{AppError, ValidationError}};
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct Todo {
@@ -107,11 +107,11 @@ impl CreateTagDto {
         let name = dto.name.trim();
         let slug = dto.slug.trim();
 
-        if name.len() < 3 {
-            return Err(AppError::Validation(TodoValidationError::InvalidTag));
+        if name.len() < 2 {
+            return Err(AppError::Validation(ValidationError::InvalidTag));
         }
         if slug.len() < 3 {
-            return Err(AppError::Validation(TodoValidationError::InvalidTag));
+            return Err(AppError::Validation(ValidationError::InvalidTag));
         }
 
         Ok(Self {
@@ -127,10 +127,10 @@ impl CreateCategoryDto {
         let slug = dto.slug.trim();
 
         if name.len() < 3 {
-            return Err(AppError::Validation(TodoValidationError::InvalidTag));
+            return Err(AppError::Validation(ValidationError::InvalidTag));
         }
         if slug.len() < 3 {
-            return Err(AppError::Validation(TodoValidationError::InvalidTag));
+            return Err(AppError::Validation(ValidationError::InvalidTag));
         }
 
         Ok(Self {
@@ -141,18 +141,18 @@ impl CreateCategoryDto {
 }
 
 impl TryFrom<CreateTodoDto> for NewTodo {
-    type Error = TodoValidationError;
+    type Error = ValidationError;
 
     fn try_from(value: CreateTodoDto) -> Result<Self, Self::Error> {
         let todo = value.todo.trim();
         let description = value.description.trim();
 
         if todo.len() < 5 {
-            return Err(TodoValidationError::TodoTooShort);
+            return Err(ValidationError::TodoTooShort);
         };
 
         if description.len() < 5 {
-            return Err(TodoValidationError::DescriptionTooShort);
+            return Err(ValidationError::DescriptionTooShort);
         };
 
         return Ok(Self {

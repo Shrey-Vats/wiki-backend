@@ -9,7 +9,6 @@ use crate::{
             model::{CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, ProgressTodoRespons},
             repository::ProgressRepo,
         },
-        todo::repository::TodoRepo,
     },
 };
 

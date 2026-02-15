@@ -1,9 +1,12 @@
+use std::{collections::HashMap, sync::Arc};
+
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool};
 use uuid::Uuid;
+use tokio::sync::{broadcast, Mutex};
 
-use crate::modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService};
+use crate::modules::{progress::service::ProgressService, rooms::model::MessageResponse, todo::service::TodoService, user::service::UserService};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -12,9 +15,9 @@ pub struct AppState {
     pub jwt_decoding: DecodingKey,
     pub todo_service: TodoService,
     pub user_service: UserService,
-    pub progress_service: ProgressService
+    pub progress_service: ProgressService,
+    pub rooms: Arc<Mutex<HashMap<String, broadcast::Sender<MessageResponse>>>>
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {

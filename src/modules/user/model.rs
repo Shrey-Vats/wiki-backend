@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
-use crate::modules::user::errors::UserValidationError;
+use crate::{common::error::ValidationError};
 
 #[derive(Debug, Clone, FromRow, Serialize)]
 pub struct User {
@@ -41,22 +41,22 @@ pub struct SignUpDto {
 }
 
 impl TryFrom<SignUpDto> for SignUpCredentials {
-    type Error = UserValidationError;
+    type Error = ValidationError;
     fn try_from(value: SignUpDto) -> Result<Self, Self::Error> {
         let email = value.email.trim();
         let name = value.name.trim();
         let password = value.password.trim();
 
         if !email.contains("@") || email.len() < 5 {
-            return Err(UserValidationError::InvalidEmail);
+            return Err(ValidationError::InvalidEmail);
         };
 
         if name.len() < 3 {
-            return Err(UserValidationError::TooShortName);
+            return Err(ValidationError::TooShortName);
         };
 
         if password.len() < 5 {
-            return Err(UserValidationError::InvalidPassword)
+            return Err(ValidationError::InvalidPassword)
         };
 
         Ok(Self {
@@ -69,16 +69,16 @@ impl TryFrom<SignUpDto> for SignUpCredentials {
 }
 
 impl TryFrom<LoginDto> for LoginCredentials {
-    type Error = UserValidationError;
+    type Error = ValidationError;
     fn try_from(value: LoginDto) -> Result<Self, Self::Error> {
         let email = value.email.trim();
         let password = value.password.trim();
 
         if !email.contains("@") || email.len() < 5 {
-            return Err(UserValidationError::InvalidEmail);
+            return Err(ValidationError::InvalidEmail);
         };
         if password.len() < 6 {
-            return Err(UserValidationError::InvalidPassword);
+            return Err(ValidationError::InvalidPassword);
         };
 
         Ok(Self {

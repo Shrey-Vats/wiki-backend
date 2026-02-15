@@ -2,9 +2,10 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    common::error::{AppError, NotFoundError},
+    common::error::{AppError, NotFoundError, ValidationError},
     modules::user::{
-        errors::UserValidationError, model::{LoginCredentials, SignUpCredentials, User}, repository::UserRepo
+        model::{LoginCredentials, SignUpCredentials, User},
+        repository::UserRepo,
     },
 };
 
@@ -19,15 +20,16 @@ impl UserService {
     }
 
     pub async fn create(&self, user: SignUpCredentials) -> Result<User, AppError> {
-        
         let option_user = UserRepo::fetch_by_email(&self.pool, &user.email)
             .await
             .map_err(|_| AppError::DbError)?;
 
-        if option_user.is_some(){
-            return Err(AppError::UserValidation(UserValidationError::UserAlreadyExits))
+        if option_user.is_some() {
+            return Err(AppError::Validation(
+                ValidationError::UserAlreadyExits,
+            ));
         }
-        
+
         let created_user = UserRepo::create(&self.pool, &user.name, &user.email, &user.password)
             .await
             .map_err(|_| AppError::DbError)?;
@@ -42,12 +44,14 @@ impl UserService {
             .ok_or_else(|| AppError::NotFound(NotFoundError::UserNotFound))?;
 
         if user.password != db_user.password {
-            return Err(AppError::UserValidation(UserValidationError::InvalidPassword))
+            return Err(AppError::Validation(
+                ValidationError::InvalidPassword,
+            ));
         }
 
         Ok(db_user)
     }
-  
+
     pub async fn delete(&self, user_id: Uuid) -> Result<(), AppError> {
         UserRepo::delete(&self.pool, user_id)
             .await
@@ -55,7 +59,7 @@ impl UserService {
 
         Ok(())
     }
-  
+
     pub async fn get(&self, user_id: Uuid) -> Result<User, AppError> {
         let user = UserRepo::fetch_by_id(&self.pool, user_id)
             .await

@@ -1,9 +1,9 @@
-use std::{env};
+use std::{collections::HashMap, env, sync::{Arc}};
+use tokio::sync::{broadcast, Mutex};
 
 use crate::{ modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
-use axum::{extract::{WebSocketUpgrade, ws::WebSocket}, response::{IntoResponse, Result}};
+use axum::{response::{Result}};
 use dotenvy::dotenv;
-use futures::StreamExt;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::PgPool;
 
@@ -30,7 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         jwt_encoding: EncodingKey::from_secret(secret.as_bytes()),
         todo_service: TodoService::new(pool.clone()),
         user_service: UserService::new(pool.clone()),
-        progress_service: ProgressService::new(pool)
+        progress_service: ProgressService::new(pool),
+        rooms: Arc::new(Mutex::new(HashMap::new())),
     };
 
     let app = create_app(state);
