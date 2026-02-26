@@ -1,89 +1,59 @@
 use sqlx::{PgPool, Postgres, QueryBuilder, Result};
 use uuid::Uuid;
 
-use crate::{common::error::AppError, modules::todo::model::{
-    Category, CreateCategoryDto, CreateTagDto, NewTodo, TagTodo, Tags, Todo, TodoCred,
-}};
+use crate::{
+    common::error::AppError,
+    modules::todo::model::{
+        Category, CreateCategoryDto, CreateTagDto, TagTodo, Tags, TodoCred,
+    },
+};
 
 pub struct TodoRepo;
 
 impl TodoRepo {
-    pub async fn insert(pool: &PgPool, user_id: Uuid, new: &NewTodo) -> Result<Todo> {
-        let todo = sqlx::query_as!(
-            Todo,
-            r#"
-        INSERT INTO todos (user_id, title, description, category_id)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, user_id, title, description, created_at, category_id, updated_at
-        "#,
-            user_id,
-            new.todo,
-            new.description,
-            new.category_id
-        )
-        .fetch_one(pool)
-        .await?;
-
-        Ok(todo)
-    }
-
-    // pub async fn fetch_all(pool: &PgPool, user_id: Uuid) -> Result<Vec<TodoFullRows>> {
-    //     let todos = sqlx::query_as!(
-    //         TodoFullRows,
+    // pub async fn insert(pool: &PgPool, user_id: Uuid, new: &NewTodo) -> Result<Todo> {
+    //     let todo = sqlx::query_as!(
+    //         Todo,
     //         r#"
-    //     SELECT
-    //         t.id AS todo_id,
-    //         t.todo AS todo_title,
-    //         t.description AS todo_description,
-    //         t.is_done,
-    //         t.created_at,
-    //         c.id AS category_id,
-    //         c.name AS category_name,
-    //         c.slug AS category_slug,
-    //         tg.id AS tag_id,
-    //         tg.name AS tag_name,
-    //         tg.slug AS tag_slug       
-    //     FROM todos t
-    //     JOIN categories c ON c.id = t.category_id
-    //     LEFT JOIN tag_todo tt ON tt.todo_id = t.id
-    //     LEFT JOIN tags tg ON tg.id = tt.tag_id
-    //     WHERE t.user_id = $1
-    //     ORDER BY t.created_at DESC
+    //     INSERT INTO todos (user_id, title, description, category_id)
+    //     VALUES ($1, $2, $3, $4)
+    //     RETURNING id, user_id, title, description, created_at, category_id, updated_at
     //     "#,
-    //         user_id
+    //         user_id,
+    //         new.todo,
+    //         new.description,
+    //         new.category_id
     //     )
-    //     .fetch_all(pool)
+    //     .fetch_one(pool)
     //     .await?;
-    //     Ok(todos)
+
+    //     Ok(todo)
     // }
 
-    pub async fn fetch(pool: &PgPool, todo_id: Uuid) -> Result<Option<TodoCred>> {
-        let todo = sqlx::query_as!(
-            TodoCred,
-            r#"
-        SELECT id, title, description, created_at, category_id, updated_at
-        FROM todos
-        WHERE id = $1
-        "#,
-            todo_id
-        )
-        .fetch_optional(pool)
-        .await?;
+    // pub async fn fetch(pool: &PgPool, todo_id: Uuid) -> Result<Option<TodoCred>> {
+    //     let todo = sqlx::query_as!(
+    //         TodoCred,
+    //         r#"
+    //     SELECT id, title, description, created_at, category_id, updated_at
+    //     FROM todos
+    //     WHERE id = $1
+    //     "#,
+    //         todo_id
+    //     )
+    //     .fetch_optional(pool)
+    //     .await?;
 
-        Ok(todo)
-    }
+    //     Ok(todo)
+    // }
 
-    pub async fn delete(pool: &PgPool, todo_id: Uuid) -> Result<()> {
-        sqlx::query_as!(
-            Todo,
-            r#"
-        DELETE FROM todos
-        WHERE id = $1
-        "#,
-            todo_id
-        )
-        .fetch_optional(pool)
-        .await?;
+    pub async fn delete(pool: &PgPool, todo_id: Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!("DELETE FROM todos WHERE id = $1", todo_id)
+            .execute(pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to delect todo".into()));
+        }
 
         Ok(())
     }
@@ -154,18 +124,18 @@ impl TodoRepo {
         Ok(tags)
     }
 
-    pub async fn delete_tag(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<()> {
-        sqlx::query_as!(
-            CreateTagDto,
-            r#"
-            DELETE FROM tags
-            WHERE slug = $1 AND user_id = $2
-            "#,
+    pub async fn delete_tag(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!(
+            "DELETE FROM tags WHERE slug = $1 AND user_id = $2",
             slug,
             user_id
         )
-        .fetch_one(pool)
+        .execute(pool)
         .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to delete tag".into()));
+        }
 
         Ok(())
     }
@@ -211,18 +181,18 @@ impl TodoRepo {
         Ok(categories)
     }
 
-    pub async fn delete_categories(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<()> {
-        sqlx::query_as!(
-            CreateCategoryDto,
-            r#"
-            DELETE FROM categories
-            WHERE slug = $1 AND user_id = $2 
-            "#,
+    pub async fn delete_categories(pool: &PgPool, slug: &str, user_id: Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!(
+            "DELETE FROM categories WHERE slug = $1 AND user_id = $2",
             slug,
             user_id
         )
-        .fetch_one(pool)
+        .execute(pool)
         .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to delete a category".into()))
+        }
 
         Ok(())
     }
@@ -243,7 +213,10 @@ impl TodoRepo {
         Ok(())
     }
 
-    pub async fn fetch_all_tag_todo(pool: &PgPool, todo_id: Uuid)-> Result<Vec<TagTodo>, AppError> {
+    pub async fn fetch_all_tag_todo(
+        pool: &PgPool,
+        todo_id: Uuid,
+    ) -> Result<Vec<TagTodo>, AppError> {
         let all_tag_todo = sqlx::query_as!(
             TagTodo,
             r#"
@@ -252,7 +225,10 @@ impl TodoRepo {
             WHERE todo_id = $1
             "#,
             todo_id
-        ).fetch_all(pool).await.map_err(|_| AppError::DbError)?;
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(|_| AppError::DbError)?;
 
         Ok(all_tag_todo)
     }
@@ -274,7 +250,10 @@ impl TodoRepo {
         Ok(tag)
     }
 
-    pub async fn fetch_tag_id(pool: &PgPool, tag_id: Uuid) -> Result<Option<CreateTagDto>, AppError> {
+    pub async fn fetch_tag_id(
+        pool: &PgPool,
+        tag_id: Uuid,
+    ) -> Result<Option<CreateTagDto>, AppError> {
         let tag = sqlx::query_as!(
             CreateTagDto,
             r#"
@@ -283,14 +262,19 @@ impl TodoRepo {
             WHERE id = $1
             "#,
             tag_id
-        ).fetch_optional(pool).await.map_err(|_| AppError::DbError)?;
-
+        )
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| AppError::DbError)?;
 
         Ok(tag)
     }
 
-    pub async fn fetch_category_id(pool: &PgPool, category_id: &Uuid) -> Result<Option<CreateCategoryDto>, AppError> {
-         let category: Option<CreateCategoryDto> = sqlx::query_as!(
+    pub async fn fetch_category_id(
+        pool: &PgPool,
+        category_id: &Uuid,
+    ) -> Result<Option<CreateCategoryDto>, AppError> {
+        let category: Option<CreateCategoryDto> = sqlx::query_as!(
             CreateCategoryDto,
             r#"
             SELECT name, slug
@@ -298,7 +282,10 @@ impl TodoRepo {
             WHERE id = $1
             "#,
             category_id
-        ).fetch_optional(pool).await.map_err(|_| AppError::DbError)?;
+        )
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| AppError::DbError)?;
 
         Ok(category)
     }
@@ -312,7 +299,7 @@ impl TodoRepo {
             Category,
             r#"
             SELECT id, user_id, name, slug 
-            From tags
+            From categories
             WHERE slug = $1 AND user_id = $2
             "#,
             slug,

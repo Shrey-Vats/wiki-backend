@@ -21,57 +21,46 @@ use crate::{
     state::AppState,
 };
 
-#[debug_handler]
-pub async fn create_todo_handler(
-    State(state): State<AppState>,
-    Extension(user_id): Extension<UserId>,
-    Json(dto): Json<CreateTodoDto>,
-) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    let new_todo: NewTodo = dto.try_into()?;
-    let mut tags: Vec<CreateTagDto> = Vec::new();
-    
-    let todo = state.todo_service.create_todo(user_id.0, &new_todo).await?;
-    // let daily_progress_todo  
-
-    for i in new_todo.tags {
-        let tag = state.todo_service.fetch_tag_slug(user_id.0, &i).await?;
-        
-        state.todo_service.create_tag_todo(&todo.id, &tag.id).await?;
-        
-        let create_dto = CreateTagDto {
-            name: tag.name,
-            slug: tag.slug
-        };
-
-        tags.push(create_dto);
-    }
-
-    let category = state.todo_service.fetch_category(&todo.category_id).await?;
-
-    let todo_response = TodoResponse {
-        id: todo.id,
-        title: todo.title,
-        description: todo.description,
-        category: category,
-        tags: tags,
-        created_at: todo.created_at,
-        updated_at: todo.updated_at
-    };
-
-    Ok(Json(ApiResponse::success(
-        "User created Successfully",
-        todo_response,
-    )))
-}
-
-// pub async fn list_todos_handler(
+// #[debug_handler]
+// pub async fn create_todo_handler(
 //     State(state): State<AppState>,
 //     Extension(user_id): Extension<UserId>,
+//     Json(dto): Json<CreateTodoDto>,
 // ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-//     let todos = state.todo_service.list_todos(user_id.0).await?;
+//     let new_todo: NewTodo = dto.try_into()?;
+//     let mut tags: Vec<CreateTagDto> = Vec::new();
+    
+//     let todo = state.todo_service.create_todo(user_id.0, &new_todo).await?;
+//     // let daily_progress_todo  
+
+//     for i in new_todo.tags {
+//         let tag = state.todo_service.fetch_tag_slug(user_id.0, &i).await?;
+        
+//         state.todo_service.create_tag_todo(&todo.id, &tag.id).await?;
+        
+//         let create_dto = CreateTagDto {
+//             name: tag.name,
+//             slug: tag.slug
+//         };
+
+//         tags.push(create_dto);
+//     }
+
+//     let category = state.todo_service.fetch_category(&todo.category_id).await?;
+
+//     let todo_response = TodoResponse {
+//         id: todo.id,
+//         title: todo.title,
+//         description: todo.description,
+//         category: category,
+//         tags: tags,
+//         created_at: todo.created_at,
+//         updated_at: todo.updated_at
+//     };
+
 //     Ok(Json(ApiResponse::success(
-//         "All todos fetch successfuly",
-//         todos,
+//         "User created Successfully",
+//         todo_response,
 //     )))
 // }
 
@@ -87,14 +76,14 @@ pub async fn delete_todo_handler(
     )))
 }
 
-pub async fn get_todo_handler(
-    State(state): State<AppState>,
-    Path(todo_id): Path<Uuid>,
-) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    let todo = state.todo_service.get(todo_id).await?;
+// pub async fn get_todo_handler(
+//     State(state): State<AppState>,
+//     Path(todo_id): Path<Uuid>,
+// ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+//     let todo = state.todo_service.get(todo_id).await?;
 
-    Ok(Json(ApiResponse::success("Todo fetch successfuly", todo)))
-}
+//     Ok(Json(ApiResponse::success("Todo fetch successfuly", todo)))
+// }
 
 #[debug_handler]
 pub async fn update_todo_handler(

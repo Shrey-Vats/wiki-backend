@@ -1,4 +1,3 @@
-
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -6,7 +5,8 @@ use crate::{
     common::error::{AppError, NotFoundError},
     modules::todo::{
         model::{
-            Category, CreateCategoryDto, CreateTagDto, NewTodo, TagDtoWithId, Tags, Todo, TodoResponse, UpdateTodoCredentials
+            Category, CreateCategoryDto, CreateTagDto, NewTodo, TagDtoWithId, Tags, Todo,
+            TodoResponse, UpdateTodoCredentials,
         },
         repository::TodoRepo,
     },
@@ -22,35 +22,32 @@ impl TodoService {
         Self { pool }
     }
 
-    pub async fn create_todo(&self, user_id: Uuid, new: &NewTodo) -> Result<Todo, AppError> {
-        let todo = TodoRepo::insert(&self.pool, user_id, new)
-            .await
-            .map_err(|_| AppError::DbError)?;
+    // pub async fn create_todo(&self, user_id: Uuid, new: &NewTodo) -> Result<Todo, AppError> {
+    //     let todo = TodoRepo::insert(&self.pool, user_id, new).await?;
 
-        Ok(todo)
-    }
+    //     Ok(todo)
+    // }
 
-    pub async fn get(&self, todo_id: Uuid) -> Result<TodoResponse, AppError> {
-        let todo = TodoRepo::fetch(&self.pool, todo_id)
-            .await
-            .map_err(|_| AppError::DbError)?
-            .ok_or_else(|| AppError::NotFound(NotFoundError::TodoNotFound))?;
+    // pub async fn get(&self, todo_id: Uuid) -> Result<TodoResponse, AppError> {
+    //     let todo = TodoRepo::fetch(&self.pool, todo_id)
+    //         .await?
+    //         .ok_or_else(|| AppError::NotFound(NotFoundError::TodoNotFound))?;
 
-        let tags = self.fetch_all_todo_tags(todo_id).await?;
-        let category = self.fetch_category(&todo.category_id).await?;
+    //     let tags = self.fetch_all_todo_tags(todo_id).await?;
+    //     let category = self.fetch_category(&todo.category_id).await?;
 
-        let return_todo = TodoResponse {
-            id: todo.id,
-            title: todo.title,
-            description: todo.description,
-            tags: tags,
-            category: category,
-            created_at: todo.created_at,
-            updated_at: todo.updated_at
-        };
+    //     let return_todo = TodoResponse {
+    //         id: todo.id,
+    //         title: todo.title,
+    //         description: todo.description,
+    //         tags: tags,
+    //         category: category,
+    //         created_at: todo.created_at,
+    //         updated_at: todo.updated_at,
+    //     };
 
-        Ok(return_todo)
-    }
+    //     Ok(return_todo)
+    // }
 
     pub async fn update(
         &self,
@@ -63,40 +60,31 @@ impl TodoService {
             update.todo.as_deref(),
             update.description.as_deref(),
         )
-        .await
-        .map_err(|_| AppError::DbError)?;
+        .await?;
 
         Ok(())
     }
 
     pub async fn delete(&self, todo_id: Uuid) -> Result<(), AppError> {
-        TodoRepo::delete(&self.pool, todo_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        TodoRepo::delete(&self.pool, todo_id).await?;
 
         Ok(())
     }
 
     pub async fn create_tag(&self, user_id: Uuid, dto: CreateTagDto) -> Result<Tags, AppError> {
-        let tag = TodoRepo::create_tag(&self.pool, user_id, dto)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        let tag = TodoRepo::create_tag(&self.pool, user_id, dto).await?;
 
         Ok(tag)
     }
 
     pub async fn fetch_all_tags(&self, user_id: Uuid) -> Result<Vec<CreateTagDto>, AppError> {
-        let tags = TodoRepo::fetch_all_tags(&self.pool, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        let tags = TodoRepo::fetch_all_tags(&self.pool, user_id).await?;
 
         Ok(tags)
     }
 
     pub async fn delete_tag(&self, slug: String, user_id: Uuid) -> Result<(), AppError> {
-        TodoRepo::delete_tag(&self.pool, &slug, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        TodoRepo::delete_tag(&self.pool, &slug, user_id).await?;
 
         Ok(())
     }
@@ -108,9 +96,7 @@ impl TodoService {
     ) -> Result<Category, AppError> {
         let category = CreateCategoryDto::validation(dto)?;
 
-        let tag = TodoRepo::create_categories(&self.pool, user_id, category)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        let tag = TodoRepo::create_categories(&self.pool, user_id, category).await?;
 
         Ok(tag)
     }
@@ -119,9 +105,7 @@ impl TodoService {
         &self,
         user_id: Uuid,
     ) -> Result<Vec<CreateCategoryDto>, AppError> {
-        let categories = TodoRepo::fetch_all_categories(&self.pool, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
+        let categories = TodoRepo::fetch_all_categories(&self.pool, user_id).await?;
 
         Ok(categories)
     }
@@ -140,8 +124,7 @@ impl TodoService {
         slug: &str,
     ) -> Result<CreateCategoryDto, AppError> {
         let category = TodoRepo::fetch_category(&self.pool, slug, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?
+            .await?
             .ok_or_else(|| AppError::NotFound(NotFoundError::CategoryNotFound))?;
 
         let return_type = CreateCategoryDto {
@@ -153,10 +136,7 @@ impl TodoService {
     }
 
     pub async fn delete_category(&self, slug: String, user_id: Uuid) -> Result<(), AppError> {
-        TodoRepo::delete_categories(&self.pool, &slug, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?;
-
+        TodoRepo::delete_categories(&self.pool, &slug, user_id).await?;
         Ok(())
     }
 
@@ -181,9 +161,8 @@ impl TodoService {
         slug: &str,
     ) -> Result<TagDtoWithId, AppError> {
         let tag = TodoRepo::fetch_tag(&self.pool, slug, user_id)
-            .await
-            .map_err(|_| AppError::DbError)?
-            .ok_or_else(|| AppError::NotFound(NotFoundError::CategoryNotFound))?;
+            .await?
+            .ok_or_else(|| AppError::NotFound(NotFoundError::TagNotFound))?;
 
         let return_type: TagDtoWithId = TagDtoWithId {
             id: tag.id,
@@ -197,13 +176,13 @@ impl TodoService {
     pub async fn fetch_tag(&self, tag_id: Uuid) -> Result<CreateTagDto, AppError> {
         let tag = TodoRepo::fetch_tag_id(&self.pool, tag_id)
             .await?
-            .ok_or_else(|| AppError::NotFound(NotFoundError::CategoryNotFound))?;
+            .ok_or_else(|| AppError::NotFound(NotFoundError::TagNotFound))?;
 
         Ok(tag)
     }
 
     pub async fn create_tag_todo(&self, todo_id: &Uuid, tag_id: &Uuid) -> Result<(), AppError> {
-        TodoRepo::create_tag_todo(&self.pool, todo_id, tag_id).await.map_err(|_| AppError::DbError)?;
+        TodoRepo::create_tag_todo(&self.pool, todo_id, tag_id).await?;
 
         Ok(())
     }

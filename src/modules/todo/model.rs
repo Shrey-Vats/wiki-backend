@@ -86,6 +86,12 @@ pub struct NewTodo {
     pub tags: Vec<String>
 }
 
+pub struct TodoDto {
+    pub todo: String,
+    pub description: String,
+    pub category_id: Uuid,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateTodoCredentials {
     pub todo: Option<String>,
