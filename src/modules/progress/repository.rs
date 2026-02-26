@@ -2,7 +2,9 @@ use sqlx::{PgPool, Result};
 use time::Date;
 use uuid::Uuid;
 
-use crate::modules::progress::model::{CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, ProgressTodoRespons};
+use crate::{common::error::{AppError, NotFoundError}, modules::{progress::model::{
+    CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, DailyProgressTodoDto, DailyProgressTodoResponse, ProgressTodoRespons
+}, todo::model::{Todo}}};
 
 pub struct ProgressRepo;
 
@@ -67,25 +69,61 @@ impl ProgressRepo {
 
     pub async fn create_daily_progress_todo(
         pool: &PgPool,
-        todo_id: &Uuid,
         daily_progress_id: &Uuid,
-        is_done: bool,
-    ) -> Result<DailyProgressTodo> {
-        let todo = sqlx::query_as!(
+        user_id: &Uuid,
+        new_todo: DailyProgressTodoResponse,
+    ) -> Result<DailyProgressTodoDto, AppError> {
+
+        let mut tx = pool.begin().await?;
+
+        let todos = sqlx::query_as!(
+            Todo,
+            r#"
+            INSERT INTO todos (user_id, title, description, category_id)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, title, description, created_at, updated_at, category_id
+            "#,
+            user_id,
+            new_todo.todo,
+            new_todo.description,
+            new_todo.category_id
+        ).fetch_one(&mut *tx).await?;
+
+        let exits = sqlx::query_scalar!(
+            r#"
+            SELECT 1
+            FROM daily_progress
+            WHERE id = $1 AND user_id = $2
+            "#,
+            daily_progress_id,
+            user_id
+        ).fetch_optional(&mut *tx).await?;
+
+        if exits.is_none() {
+            return Err(AppError::NotFound(NotFoundError::DailyProgressNotFound))
+        }
+
+        let daily_progress_todo = sqlx::query_as!(
             DailyProgressTodo,
             r#"
             INSERT INTO daily_progress_todos (todo_id, daily_progress_id, is_done)
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2, false)
             RETURNING id, todo_id, daily_progress_id, is_done, created_at 
             "#,
-            todo_id,
-            daily_progress_id,
-            is_done
-        )
-        .fetch_one(pool)
-        .await?;
+            todos.id,
+            daily_progress_id
+        ).fetch_one(&mut *tx).await?;
 
-        Ok(todo)
+        let return_value: DailyProgressTodoDto = DailyProgressTodoDto {
+            id: todos.id,
+            title: todos.title,
+            description: todos.description,
+            category_id:todos.category_id,
+            is_done: daily_progress_todo.is_done,
+            created_at: daily_progress_todo.created_at
+        };
+
+        Ok(return_value)
     }
 
     pub async fn fetch_daily_progress_todo_by_id(
@@ -108,16 +146,25 @@ impl ProgressRepo {
         Ok(todo)
     }
 
-    pub async fn toggle_daily_progress_todo(pool: &PgPool, id: &Uuid) -> Result<DailyProgressTodo> {
+    pub async fn toggle_daily_progress_todo(
+        pool: &PgPool,
+        id: &Uuid,
+        user_id: &Uuid,
+    ) -> Result<DailyProgressTodo> {
+
         let todo: DailyProgressTodo = sqlx::query_as!(
             DailyProgressTodo,
             r#"
-            UPDATE daily_progress_todos
-            SET is_done = NOT is_done
-            WHERE id = $1
-            RETURNING id, todo_id, daily_progress_id, is_done, created_at
+            UPDATE daily_progress_todos dpt
+            SET is_done = NOT dpt.is_done
+            FROM daily_progress dp
+            WHERE dpt.id = $1
+            AND dpt.daily_progress_id = dp.id
+            AND dp.user_id = $2
+            RETURNING dpt.id, dpt.todo_id, dpt.daily_progress_id, dpt.is_done, dpt.created_at
             "#,
-            id
+            id,
+            user_id
         )
         .fetch_one(pool)
         .await?;
@@ -125,7 +172,10 @@ impl ProgressRepo {
         Ok(todo)
     }
 
-    pub async fn fetch_all_daily_progress_todos(pool: &PgPool, daily_progress_id: &Uuid) -> Result<Vec<CompleteDailyProgressTodo>> {
+    pub async fn fetch_all_daily_progress_todos(
+        pool: &PgPool,
+        daily_progress_id: &Uuid,
+    ) -> Result<Vec<CompleteDailyProgressTodo>> {
         let todos = sqlx::query_as!(
             CompleteDailyProgressTodo,
             r#"
@@ -150,10 +200,11 @@ impl ProgressRepo {
         WHERE t.daily_progress_id = $1
         ORDER BY t.created_at DESC
         "#,
-        daily_progress_id
-        ).fetch_all(pool).await?;
+            daily_progress_id
+        )
+        .fetch_all(pool)
+        .await?;
 
         Ok(todos)
     }
-
 }

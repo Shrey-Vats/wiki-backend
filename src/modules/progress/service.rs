@@ -4,12 +4,10 @@ use uuid::Uuid;
 
 use crate::{
     common::error::AppError,
-    modules::{
-        progress::{
-            model::{CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, ProgressTodoRespons},
+    modules::progress::{
+            model::{CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, DailyProgressTodoDto, DailyProgressTodoResponse, ProgressTodoRespons},
             repository::ProgressRepo,
         },
-    },
 };
 
 #[derive(Debug, Clone)]
@@ -37,19 +35,19 @@ impl ProgressService {
     pub async fn create_daily_progress_todo(
         &self,
         progress_id: &Uuid,
-        todo_id: &Uuid,
-        is_done: bool,
-    ) -> Result<DailyProgressTodo, AppError> {
+        user_id: &Uuid,
+        dto: DailyProgressTodoResponse
+    ) -> Result<DailyProgressTodoDto, AppError> {
         let progress_todo =
-            ProgressRepo::create_daily_progress_todo(&self.pool, todo_id, progress_id, is_done)
+            ProgressRepo::create_daily_progress_todo(&self.pool, progress_id, user_id, dto)
                 .await
                 .map_err(|_| AppError::DbError)?;
 
         Ok(progress_todo)
     }
 
-    pub async fn toggle_daily_progress_todo(&self, progress_todo_id: &Uuid) -> Result<DailyProgressTodo, AppError>{
-        let todo = ProgressRepo::toggle_daily_progress_todo(&self.pool, progress_todo_id).await.map_err(|_| AppError::DbError)?;
+    pub async fn toggle_daily_progress_todo(&self, progress_todo_id: &Uuid, user_id: &Uuid) -> Result<DailyProgressTodo, AppError>{
+        let todo = ProgressRepo::toggle_daily_progress_todo(&self.pool, progress_todo_id, user_id).await.map_err(|_| AppError::DbError)?;
 
         Ok(todo)
     }

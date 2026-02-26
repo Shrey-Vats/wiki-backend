@@ -24,6 +24,23 @@ pub struct DailyProgressTodo {
 }
 
 #[derive(Debug, Serialize)]
+pub struct DailyProgressTodoDto {
+    pub id: Uuid,
+    pub title: String,
+    pub description: String,
+    pub category_id: Uuid,
+    pub is_done: bool,
+    pub created_at: PrimitiveDateTime
+}
+
+pub struct DailyProgressTodoResponse {
+    pub daily_progress_id: Uuid,
+    pub todo: String,
+    pub description: String,
+    pub category_id: Uuid,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ProgressTodoRespons {
     pub progress_todo_id: Uuid,
     pub todo_id: Uuid,
@@ -55,13 +72,11 @@ pub struct CompleteDailyProgressTodo {
 
 #[derive(Debug, Deserialize)]
 pub struct DailyProgressDto {
-    pub user_id: Uuid,
     pub day: Date
 }
 
-#[derive(Debug, Deserialize)]
-pub struct DailyProgressTodoDto {
-    pub progress_id: Uuid,
-    pub todo_id: Uuid,
-    pub is_done: bool
-}
+// #[derive(Debug, Deserialize)]
+// pub struct DailyProgressTodoDto {
+//     pub todo_id: Uuid,
+//     pub is_done: bool
+// }
