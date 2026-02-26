@@ -13,6 +13,13 @@ pub struct User {
     pub is_public: bool
 }
 
+#[derive(Serialize)]
+pub struct UserResponseDto {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub is_public: bool
+}
 pub struct SignUpCredentials {
     pub name: String,
     pub email: String,
