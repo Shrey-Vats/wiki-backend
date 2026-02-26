@@ -64,7 +64,7 @@ impl RoomRepo {
     pub async fn create_message(
         pool: &PgPool,
         message: MessageDto,
-        user_id: Uuid,
+        user_id: &Uuid,
     ) -> Result<MessageResponse> {
         let message: MessageResponse = sqlx::query_as!(
             MessageResponse,

@@ -37,6 +37,34 @@ pub struct MessageResponse {
     pub created_at: OffsetDateTime
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MessageType {
+    System,
+    User
+}
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "event", content = "payload")]
+pub enum ClientEvent {
+    ChatSend {content: String},
+    Ping
+}
+#[derive(Serialize, Deserialize)]
+pub enum ServerEvent {
+    ChatMessage (ChatMessage),
+    History(Vec<MessageResponse>),
+    Presence { user: String, kind: String },
+    Pong,
+}
+
+#[derive(FromRow, Debug, Clone, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub id: Option<Uuid>,
+    pub message_type: MessageType,
+    pub user: String,
+    pub message: String,
+    pub created_at: Option<OffsetDateTime> 
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RoomDto {
     pub name: String,
