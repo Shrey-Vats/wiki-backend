@@ -12,11 +12,11 @@ use crate::{
             fetch_all_daily_progress_todos, fetch_daily_progress_todo_by_id,
             toggle_daily_progress_todo_handler,
         },
-        rooms::handler::{create_room_handler, get_all_rooms_handler, get_room_handler},
+        rooms::handler::{create_room_handler, get_all_rooms_handler, get_room_handler, ws_handler},
         todo::handler::{
-            create_category_handler, create_tag_handler, create_todo_handler,
+            create_category_handler, create_tag_handler,
             delete_category_handler, delete_tag_handler, delete_todo_handler,
-            fetch_all_categories_handler, fetch_all_tags_handler, get_todo_handler,
+            fetch_all_categories_handler, fetch_all_tags_handler,
             update_todo_handler,
         },
         user::handler::{create_user, delete_user_handler, get_user_handler, login_user},
@@ -26,22 +26,22 @@ use crate::{
 
 pub fn create_app(state: AppState) -> Router {
     Router::new()
+        .nest("/api", routes())
         .nest("/api", protected_routes())
         .route_layer(from_fn_with_state(state.clone(), auth_middleware))
-        .nest("/api", routes())
         .with_state(state)
 }
 
 pub fn protected_routes() -> Router<AppState> {
     Router::new()
-        .route("/todo/add", post(create_todo_handler))
+        // .route("/todo/add", post(create_todo_handler))
+        // .route("/todo/get/{id}", get(get_todo_handler))
         .route("/todo/update/{id}", put(update_todo_handler))
         .route("/todo/remove/{id}", delete(delete_todo_handler))
-        .route("/todo/get/{id}", get(get_todo_handler))
         .route("/user/delete", delete(delete_user_handler))
         .route("/user/me", get(get_user_handler))
         .route("/tag/add", post(create_tag_handler))
-        .route("/tag/{slug}", get(delete_tag_handler))
+        .route("/tag/{slug}", delete(delete_tag_handler))
         .route("/tag/all", get(fetch_all_tags_handler))
         .route("/category/add", post(create_category_handler))
         .route("/category/{slug}", delete(delete_category_handler))
@@ -62,7 +62,7 @@ pub fn protected_routes() -> Router<AppState> {
         .route("/room", post(create_room_handler))
         .route("/room/info/{room_id}", get(get_room_handler))
         .route("/rooms", get(get_all_rooms_handler))
-    // .route("/room/{room_id}", get(ws_handler))
+        .route("/room/{room_id}", get(ws_handler))
 }
 
 pub fn routes() -> Router<AppState> {
