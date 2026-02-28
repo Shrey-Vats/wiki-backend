@@ -2,9 +2,16 @@ use sqlx::{PgPool, Result};
 use time::Date;
 use uuid::Uuid;
 
-use crate::{common::error::{AppError, NotFoundError}, modules::{progress::model::{
-    CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, DailyProgressTodoDto, DailyProgressTodoResponse, ProgressTodoRespons
-}, todo::model::{Todo}}};
+use crate::{
+    common::error::{AppError, NotFoundError},
+    modules::{
+        progress::model::{
+            CompleteDailyProgressTodo, DailyProgress, DailyProgressTodo, DailyProgressTodoDto,
+            DailyProgressTodoResponse, ProgressTodoRespons,
+        },
+        todo::model::Todo,
+    },
+};
 
 pub struct ProgressRepo;
 
@@ -73,7 +80,6 @@ impl ProgressRepo {
         user_id: &Uuid,
         new_todo: DailyProgressTodoResponse,
     ) -> Result<DailyProgressTodoDto, AppError> {
-
         let mut tx = pool.begin().await?;
 
         let todos = sqlx::query_as!(
@@ -87,7 +93,9 @@ impl ProgressRepo {
             new_todo.todo,
             new_todo.description,
             new_todo.category_id
-        ).fetch_one(&mut *tx).await?;
+        )
+        .fetch_one(&mut *tx)
+        .await?;
 
         let exits = sqlx::query_scalar!(
             r#"
@@ -97,10 +105,12 @@ impl ProgressRepo {
             "#,
             daily_progress_id,
             user_id
-        ).fetch_one(&mut *tx).await?;
+        )
+        .fetch_one(&mut *tx)
+        .await?;
 
         if exits.is_none() {
-            return Err(AppError::NotFound(NotFoundError::DailyProgressNotFound))
+            return Err(AppError::NotFound(NotFoundError::DailyProgressNotFound));
         }
 
         let daily_progress_todo = sqlx::query_as!(
@@ -112,15 +122,17 @@ impl ProgressRepo {
             "#,
             todos.id,
             daily_progress_id
-        ).fetch_one(&mut *tx).await?;
+        )
+        .fetch_one(&mut *tx)
+        .await?;
 
         let return_value: DailyProgressTodoDto = DailyProgressTodoDto {
             id: todos.id,
             title: todos.title,
             description: todos.description,
-            category_id:todos.category_id,
+            category_id: todos.category_id,
             is_done: daily_progress_todo.is_done,
-            created_at: daily_progress_todo.created_at
+            created_at: daily_progress_todo.created_at,
         };
 
         Ok(return_value)
@@ -151,7 +163,6 @@ impl ProgressRepo {
         id: &Uuid,
         user_id: &Uuid,
     ) -> Result<DailyProgressTodo> {
-
         let todo: DailyProgressTodo = sqlx::query_as!(
             DailyProgressTodo,
             r#"
@@ -208,17 +219,23 @@ impl ProgressRepo {
         Ok(todos)
     }
 
-    pub async  fn is_progress_exits(pool: &PgPool, user_id: &Uuid, day: Date) -> Result<bool, AppError> {
-        let progress: bool= sqlx::query_scalar!(
+    pub async fn get_progress_id(
+        pool: &PgPool,
+        user_id: &Uuid,
+        day: Date,
+    ) -> Result<Option<Uuid>, AppError> {
+        let progress_id = sqlx::query_scalar!(
             r#"
-            SELECT  EXISTS(
-            SELECT 1 FROM daily_progress WHERE user_id = $1 AND day = $2
-        )
-            "#,
+        SELECT id
+        FROM daily_progress
+        WHERE user_id = $1 AND day = $2
+        "#,
             user_id,
             day
-        ).fetch_one(pool).await?.ok_or_else(|| AppError::NotFound(NotFoundError::DailyProgressNotFound))?;
+        )
+        .fetch_optional(pool)
+        .await?;
 
-        Ok(progress)
+        Ok(progress_id)
     }
 }

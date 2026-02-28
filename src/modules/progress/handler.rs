@@ -75,7 +75,7 @@ pub async fn is_progress_exits_handler(
     Extension(user_id): Extension<UserId>,
     Path(day): Path<Date>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
-    ProgressService::is_progress_exits(&state.progress_service, &user_id.0, day).await?;
+    let id = ProgressService::fetch_progress_id(&state.progress_service, &user_id.0, day).await?;
 
-    Ok(Json(ApiResponse::success("Progress exits!", None::<()>)))
+    Ok(Json(ApiResponse::success("Progress exits!", id)))
 }

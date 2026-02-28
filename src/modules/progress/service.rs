@@ -61,14 +61,10 @@ impl ProgressService {
         Ok(task)
     }
 
-    pub async fn is_progress_exits(&self, user_id: &Uuid, day: Date) -> Result<(), AppError> {
-        let progress = ProgressRepo::is_progress_exits(&self.pool, user_id, day).await?;
+    pub async fn fetch_progress_id(&self, user_id: &Uuid, day: Date) -> Result<Uuid, AppError> {
+        let progress = ProgressRepo::get_progress_id(&self.pool, user_id, day).await?.ok_or_else(|| AppError::NotFound(NotFoundError::DailyProgressNotFound))?;
 
-        if !progress {
-            return Err(AppError::NotFound(NotFoundError::DailyProgressNotFound));
-        }
-
-        Ok(())
+        Ok(progress)
     }
 }
 

@@ -8,9 +8,7 @@ use crate::{
     middleware::auth::auth_middleware,
     modules::{
         progress::handler::{
-            create_daily_progress_handler, create_daily_progress_todo_handler,
-            fetch_all_daily_progress_todos, fetch_daily_progress_todo_by_id,
-            toggle_daily_progress_todo_handler,
+            create_daily_progress_handler, create_daily_progress_todo_handler, fetch_all_daily_progress_todos, fetch_daily_progress_todo_by_id, is_progress_exits_handler, toggle_daily_progress_todo_handler
         },
         rooms::handler::{create_room_handler, get_all_rooms_handler, get_room_handler, ws_handler},
         todo::handler::{
@@ -26,9 +24,9 @@ use crate::{
 
 pub fn create_app(state: AppState) -> Router {
     Router::new()
-        .nest("/api", routes())
-        .nest("/api", protected_routes())
-        .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+    .nest("/api", protected_routes())
+    .route_layer(from_fn_with_state(state.clone(), auth_middleware))
+    .nest("/api", routes())
         .with_state(state)
 }
 
@@ -46,19 +44,19 @@ pub fn protected_routes() -> Router<AppState> {
         .route("/category/add", post(create_category_handler))
         .route("/category/{slug}", delete(delete_category_handler))
         .route("/progress", post(create_daily_progress_handler))
-        .route("/progress/todo", post(create_daily_progress_todo_handler))
+        .route("/progress/todo/create/{daily_progress_id}", post(create_daily_progress_todo_handler))
         .route(
             "/progress/todo/{progress_todo_id}",
             get(fetch_daily_progress_todo_by_id),
         )
         .route(
-            "/progress/todo/{progress_todo_id}",
+            "/progress/todo/toggle/{progress_todo_id}",
             put(toggle_daily_progress_todo_handler),
         )
         .route(
             "/progress/todos/{daily_progress_id}",
             get(fetch_all_daily_progress_todos),
-        )
+        ).route("/progress/is_exits/{day}", get(is_progress_exits_handler))
         .route("/room", post(create_room_handler))
         .route("/room/info/{room_id}", get(get_room_handler))
         .route("/rooms", get(get_all_rooms_handler))
