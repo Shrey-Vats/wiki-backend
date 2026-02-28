@@ -97,7 +97,7 @@ impl ProgressRepo {
             "#,
             daily_progress_id,
             user_id
-        ).fetch_optional(&mut *tx).await?;
+        ).fetch_one(&mut *tx).await?;
 
         if exits.is_none() {
             return Err(AppError::NotFound(NotFoundError::DailyProgressNotFound))
@@ -206,5 +206,19 @@ impl ProgressRepo {
         .await?;
 
         Ok(todos)
+    }
+
+    pub async  fn is_progress_exits(pool: &PgPool, user_id: &Uuid, day: Date) -> Result<bool, AppError> {
+        let progress: bool= sqlx::query_scalar!(
+            r#"
+            SELECT  EXISTS(
+            SELECT 1 FROM daily_progress WHERE user_id = $1 AND day = $2
+        )
+            "#,
+            user_id,
+            day
+        ).fetch_one(pool).await?.ok_or_else(|| AppError::NotFound(NotFoundError::DailyProgressNotFound))?;
+
+        Ok(progress)
     }
 }

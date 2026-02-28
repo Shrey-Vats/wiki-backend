@@ -33,8 +33,8 @@ pub struct DailyProgressTodoDto {
     pub created_at: PrimitiveDateTime
 }
 
+#[derive(Debug, Deserialize)]
 pub struct DailyProgressTodoResponse {
-    pub daily_progress_id: Uuid,
     pub todo: String,
     pub description: String,
     pub category_id: Uuid,
@@ -72,7 +72,7 @@ pub struct CompleteDailyProgressTodo {
 
 #[derive(Debug, Deserialize)]
 pub struct DailyProgressDto {
-    pub day: Date
+    pub day: String
 }
 
 // #[derive(Debug, Deserialize)]
