@@ -83,3 +83,12 @@ pub async fn is_progress_exits_handler(
 
     Ok(Json(ApiResponse::success("Progress exits!", id)))
 }
+
+pub async fn delete_daily_progress_todo_handler(
+    State(state): State<AppState>,
+    Path(progress_todo_id): Path<Uuid>
+) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    ProgressService::delete_daily_progress_todo(&state.progress_service, &progress_todo_id).await?;
+
+    Ok(Json(ApiResponse::success("Successfully deleted daily progress todo", None::<()>)))
+}

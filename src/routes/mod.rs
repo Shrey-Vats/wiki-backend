@@ -9,8 +9,9 @@ use crate::{
     modules::{
         progress::handler::{
             create_daily_progress_handler, create_daily_progress_todo_handler,
-            fetch_all_daily_progress_todos, fetch_daily_progress_todo_by_id,
-            is_progress_exits_handler, toggle_daily_progress_todo_handler,
+            delete_daily_progress_todo_handler, fetch_all_daily_progress_todos,
+            fetch_daily_progress_todo_by_id, is_progress_exits_handler,
+            toggle_daily_progress_todo_handler,
         },
         rooms::handler::{
             create_room_handler, get_all_rooms_handler, get_room_handler, ws_handler,
@@ -20,7 +21,10 @@ use crate::{
             delete_tag_handler, delete_todo_handler, fetch_all_categories_handler,
             fetch_all_tags_handler, update_todo_handler,
         },
-        user::handler::{change_user_visibility_handler, create_user, delete_user_handler, get_user_handler, login_user},
+        user::handler::{
+            change_user_visibility_handler, create_user, delete_user_handler, get_user_handler,
+            login_user,
+        },
     },
     state::AppState,
 };
@@ -41,7 +45,10 @@ pub fn protected_routes() -> Router<AppState> {
         .route("/todo/remove/{id}", delete(delete_todo_handler))
         .route("/user/delete", delete(delete_user_handler))
         .route("/user/me", get(get_user_handler))
-        .route("/user/update_visibility", put(change_user_visibility_handler))
+        .route(
+            "/user/update_visibility",
+            put(change_user_visibility_handler),
+        )
         .route("/tag/add", post(create_tag_handler))
         .route("/tag/{slug}", delete(delete_tag_handler))
         .route("/tag/all", get(fetch_all_tags_handler))
@@ -55,11 +62,9 @@ pub fn protected_routes() -> Router<AppState> {
         )
         .route(
             "/progress/todo/{progress_todo_id}",
-            get(fetch_daily_progress_todo_by_id),
-        )
-        .route(
-            "/progress/todo/toggle/{progress_todo_id}",
-            put(toggle_daily_progress_todo_handler),
+            get(fetch_daily_progress_todo_by_id)
+                .put(toggle_daily_progress_todo_handler)
+                .delete(delete_daily_progress_todo_handler),
         )
         .route(
             "/progress/todos/{daily_progress_id}",

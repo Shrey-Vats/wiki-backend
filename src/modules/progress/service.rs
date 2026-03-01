@@ -66,5 +66,11 @@ impl ProgressService {
 
         Ok(progress)
     }
+
+    pub async fn delete_daily_progress_todo(&self, id: &Uuid) -> Result<(), AppError> {
+        ProgressRepo::delete_daily_progress_todo(&self.pool, id).await?;
+
+        Ok(())
+    }
 }
 

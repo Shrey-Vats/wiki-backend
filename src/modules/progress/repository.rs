@@ -245,4 +245,25 @@ impl ProgressRepo {
 
         Ok(progress_id)
     }
+
+    pub async fn delete_daily_progress_todo(pool: &PgPool, id: &Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!(
+            r#"
+            WITH deleted_dpt AS (
+                DELETE FROM daily_progress_todos
+                WHERE id = $1
+                RETURNING todo_id
+            )
+            DELETE FROM todos
+            WHERE id = (SELECT todo_id FROM deleted_dpt)
+            "#,
+            id
+        ).execute(pool).await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to delete todo".into()));
+        }
+
+        Ok(())
+    }
 }
