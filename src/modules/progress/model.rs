@@ -37,7 +37,7 @@ pub struct DailyProgressTodoDto {
 pub struct DailyProgressTodoResponse {
     pub todo: String,
     pub description: String,
-    pub category_id: Uuid,
+    pub category_slug: String,
 }
 
 #[derive(Debug, Serialize)]

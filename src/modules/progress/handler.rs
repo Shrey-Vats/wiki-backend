@@ -37,6 +37,7 @@ pub async fn create_daily_progress_todo_handler(
     Path(daily_progress_id): Path<Uuid>,
     Json(dto): Json<DailyProgressTodoResponse>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    println!("data inside field: {:?}", dto);
     let daily_progress_todo = state.progress_service.create_daily_progress_todo(&daily_progress_id, &user_id.0, dto).await?;
 
     Ok(Json(ApiResponse::success("Successfuly created progress todo", daily_progress_todo)))
@@ -73,8 +74,11 @@ pub async fn fetch_all_daily_progress_todos(
 pub async fn is_progress_exits_handler(
     State(state): State<AppState>,
     Extension(user_id): Extension<UserId>,
-    Path(day): Path<Date>,
+    Path(day): Path<String>,
 ) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    let day = Date::parse(&day, &Iso8601::DATE)
+    .map_err(|_| AppError::Failed("Invalid date. Use YYYY-MM-DD".into()))?;
+
     let id = ProgressService::fetch_progress_id(&state.progress_service, &user_id.0, day).await?;
 
     Ok(Json(ApiResponse::success("Progress exits!", id)))

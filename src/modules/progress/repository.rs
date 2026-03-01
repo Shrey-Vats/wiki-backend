@@ -86,13 +86,20 @@ impl ProgressRepo {
             Todo,
             r#"
             INSERT INTO todos (user_id, title, description, category_id)
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, 
+        (
+            SELECT id
+            FROM categories
+            WHERE slug = $4 AND user_id =$1
+            LIMIT 1
+        )
+            )
             RETURNING id, user_id, title, description, created_at, updated_at, category_id
             "#,
             user_id,
             new_todo.todo,
             new_todo.description,
-            new_todo.category_id
+            new_todo.category_slug
         )
         .fetch_one(&mut *tx)
         .await?;

@@ -32,7 +32,9 @@ pub enum NotFoundError {
     #[error("Category not found")]
     CategoryNotFound,
     #[error("Room not found")]
-    RoomNotFound
+    RoomNotFound,
+    #[error("Daily progress room not found")]
+    DailyProgressNotFound
 }
 
 #[derive(Debug, Error)]
@@ -74,7 +76,7 @@ impl IntoResponse for AppError {
         };
         (
             status,
-            Json(ApiResponse::<()>::error("message")),
+            Json(ApiResponse::<()>::error(message)),
         )
             .into_response()
     }
