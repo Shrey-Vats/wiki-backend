@@ -63,4 +63,9 @@ impl UserService {
 
         Ok(user)
     }
+
+    pub async fn change_visibility(&self, user_id: Uuid, is_public: bool) -> Result<(), AppError> {
+        UserRepo::change_visibility(&self.pool, &user_id, is_public).await?;
+        Ok(())
+    }
 }

@@ -20,6 +20,12 @@ pub struct UserResponseDto {
     pub email: String,
     pub is_public: bool
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct UpdateVisibility {
+    pub is_public: bool
+}
+
 pub struct SignUpCredentials {
     pub name: String,
     pub email: String,

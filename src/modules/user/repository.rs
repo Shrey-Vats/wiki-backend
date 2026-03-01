@@ -73,4 +73,21 @@ impl UserRepo {
 
         Ok(user)
     }
+    pub async fn change_visibility(pool: &PgPool, user_id: &Uuid, is_public: bool) -> Result<(), AppError> {
+        let result = sqlx::query!(
+            r#"
+            UPDATE users
+            SET is_public = $1
+            WHERE id = $2
+            "#,
+            is_public,
+            user_id
+        ).execute(pool).await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to update user's visibility status".into()));
+        }
+
+        Ok(())
+    }
 }
