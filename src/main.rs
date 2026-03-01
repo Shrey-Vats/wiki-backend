@@ -1,8 +1,9 @@
 use std::{collections::HashMap, env, sync::{Arc}};
 use tokio::sync::{broadcast, Mutex};
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{ modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
-use axum::{response::{Result}};
+use axum::{http::{HeaderValue, Method, header}, response::Result};
 use dotenvy::dotenv;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::PgPool;
@@ -34,7 +35,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         rooms: Arc::new(Mutex::new(HashMap::new())),
     };
 
-    let app = create_app(state);
+     
+let cors = CorsLayer::new()
+    .allow_origin(
+        "http://localhost:3001"
+            .parse::<HeaderValue>()
+            .unwrap()
+    )
+    .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+    .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+    .allow_credentials(true);
+
+    let app = create_app(state).layer(cors);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
 
