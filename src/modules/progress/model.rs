@@ -51,7 +51,7 @@ pub struct ProgressTodoRespons {
     pub created_at: PrimitiveDateTime
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug)]
 pub struct CompleteDailyProgressTodo {
     pub daily_progress_todo_id: Uuid,
     pub todo_id: Uuid,
@@ -59,14 +59,8 @@ pub struct CompleteDailyProgressTodo {
     pub todo_description: String,
     pub is_done: bool,
     pub created_at: PrimitiveDateTime,
-
-    pub category_id: Uuid,
-    pub category_name: String,
     pub category_slug: String,
-
-    pub tag_id: Option<Uuid>,
-    pub tag_name: Option<String>,
-    pub tag_slug: Option<String>
+    pub category_name: String
 }
 // pub struct
 

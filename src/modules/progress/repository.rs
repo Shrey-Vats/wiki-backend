@@ -133,6 +133,8 @@ impl ProgressRepo {
         .fetch_one(&mut *tx)
         .await?;
 
+    tx.commit().await?;
+
         let return_value: DailyProgressTodoDto = DailyProgressTodoDto {
             id: todos.id,
             title: todos.title,
@@ -204,17 +206,13 @@ impl ProgressRepo {
             td.id as todo_id,
             td.title AS todo_title,
             td.description AS todo_description,
-            c.id AS category_id,
-            c.name AS category_name,
             c.slug AS category_slug,
-            tg.id AS tag_id,
-            tg.name AS tag_name,
-            tg.slug AS tag_slug       
+            c.name AS category_name
+
+  
         FROM daily_progress_todos t
         JOIN todos td ON td.id = t.todo_id
         JOIN categories c ON c.id = td.category_id
-        LEFT JOIN tag_todo tt ON tt.todo_id = td.id
-        LEFT JOIN tags tg ON tg.id = tt.tag_id
         WHERE t.daily_progress_id = $1
         ORDER BY t.created_at DESC
         "#,
@@ -222,6 +220,8 @@ impl ProgressRepo {
         )
         .fetch_all(pool)
         .await?;
+
+    println!("all daily_progress todos: {:?}", todos);
 
         Ok(todos)
     }
