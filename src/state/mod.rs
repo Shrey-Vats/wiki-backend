@@ -6,7 +6,7 @@ use sqlx::{PgPool};
 use uuid::Uuid;
 use tokio::sync::{broadcast, Mutex};
 
-use crate::modules::{progress::service::ProgressService, rooms::{model::ChatMessage, service::RoomService}, todo::service::TodoService, user::service::UserService};
+use crate::modules::{progress::service::ProgressService, rooms::{model::{ MessageResponse, ServerEvent}, service::RoomService}, todo::service::TodoService, user::service::UserService};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -17,7 +17,7 @@ pub struct AppState {
     pub user_service: UserService,
     pub progress_service: ProgressService,
     pub room_service: RoomService,
-    pub rooms: Arc<Mutex<HashMap<String, broadcast::Sender<ChatMessage>>>>
+    pub rooms: Arc<Mutex<HashMap<String, broadcast::Sender<ServerEvent>>>>
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
-use time::{OffsetDateTime, PrimitiveDateTime};
+use time::{OffsetDateTime};
 use uuid::Uuid;
 
 use crate::common::error::{AppError, ValidationError};
@@ -48,21 +48,20 @@ pub enum ClientEvent {
     ChatSend {content: String},
     Ping
 }
-#[derive(Serialize, Deserialize)]
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(tag = "event", content = "payload")]
 pub enum ServerEvent {
-    ChatMessage (ChatMessage),
+    ChatMessage (MessageResponse),
     History(Vec<MessageResponse>),
-    Presence { user: String, kind: String },
+    Presence { user: String, kind: PresenceKind },
     Pong,
 }
 
-#[derive(FromRow, Debug, Clone, Serialize, Deserialize)]
-pub struct ChatMessage {
-    pub id: Option<Uuid>,
-    pub message_type: MessageType,
-    pub user: String,
-    pub message: String,
-    pub created_at: Option<OffsetDateTime> 
+#[derive(Clone, Serialize, Deserialize)]
+pub enum PresenceKind {
+    Join,
+    Leave
 }
 
 #[derive(Debug, Deserialize)]

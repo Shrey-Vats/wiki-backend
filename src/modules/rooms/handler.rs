@@ -5,11 +5,10 @@ use crate::{
     },
     modules::{
         rooms::{
-            model::{ChatMessage, ClientEvent, MessageDto, MessageType, RoomDto, ServerEvent},
+            model::{ClientEvent, MessageDto, RoomDto, ServerEvent},
             repository::RoomRepo,
-            service::RoomService,
         },
-        user::{model::UserId, repository::UserRepo},
+        user::{model::UserId},
     },
     state::AppState,
 };
@@ -95,18 +94,6 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     drop(rooms);
 
-    let username = match UserRepo::fetch_by_id(&state.pool, user_id).await {
-        Ok(Some(user)) => user.name,
-        Ok(None) => {
-            eprintln!("User not found for id: {user_id}");
-            return;
-        }
-        Err(err) => {
-            eprintln!("Failed to fetch user {user_id}: {err}");
-            return;
-        }
-    };
-
     let mut rx = tx.subscribe();
     let (mut sender, mut receiver) = socket.split();
 
@@ -122,7 +109,7 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     // fan-out task
     let mut send_task = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {
-            match serde_json::to_string(&ServerEvent::ChatMessage(msg)) {
+            match serde_json::to_string(&msg) {
                 Err(_) => {
                     break;
                 }
@@ -136,7 +123,7 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     });
 
     // receive task
-    let pool = state.pool.clone();
+    let pool: sqlx::Pool<sqlx::Postgres> = state.pool.clone();
     let tx_for_recv = tx.clone();
 
     let mut recv_task = tokio::spawn(async move {
@@ -148,25 +135,13 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                         if let Ok(dto) = MessageDto::validate(MessageDto { room_id, content }) {
                             if let Ok(saved) = RoomRepo::create_message(&pool, dto, &user_id).await
                             {
-                                let _ = tx_for_recv.send(ChatMessage {
-                                    id: Some(saved.id),
-                                    message_type: MessageType::User,
-                                    user: username.clone(),
-                                    message: saved.content,
-                                    created_at: Some(saved.created_at),
-                                });
+                                let _ = tx_for_recv.send(ServerEvent::ChatMessage(saved));
                             }
                         }
                     }
                     ClientEvent::Ping => {
                         if let Ok(_) = serde_json::to_string(&ServerEvent::Pong) {
-                            let _ = tx_for_recv.send(ChatMessage {
-                                id: None,
-                                message_type: MessageType::System,
-                                user: "System".into(),
-                                message: "pong".into(),
-                                created_at: None,
-                            });
+                            let _ = tx_for_recv.send(ServerEvent::Pong);
                         }
                     }
                 }
@@ -223,4 +198,6 @@ pub async fn get_room_membership_handler(
     )))
 }
 
-pub async fn get_room_members() {}
+pub async fn get_room_members() {
+
+}
