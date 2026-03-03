@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap};
 
 use crate::{
     common::{
@@ -10,7 +10,7 @@ use crate::{
             model::{ClientEvent, MessageDto, RoomDto, ServerEvent},
             repository::RoomRepo,
         },
-        user::model::UserId,
+        user::{ model::UserId, repository::UserRepo},
     },
     state::{AppState, RoomState},
 };
@@ -23,8 +23,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use futures::{SinkExt, StreamExt};
-use tokio::sync::broadcast;
+use futures::{SinkExt, StreamExt, channel::mpsc};
 use uuid::Uuid;
 
 pub async fn create_room_handler(
@@ -74,7 +73,12 @@ pub async fn ws_handler(
     Path(room_id): Path<Uuid>,
     Extension(user_id): Extension<UserId>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    let can_join = state.room_service.clone().get_user_join_status(&room_id, &user_id.0).await.map_err(|_| StatusCode::BAD_REQUEST)?;
+    let can_join = state
+        .room_service
+        .clone()
+        .get_user_join_status(&room_id, &user_id.0)
+        .await
+        .map_err(|_| StatusCode::BAD_REQUEST)?;
 
     if !can_join {
         return Err(StatusCode::FORBIDDEN);
@@ -87,19 +91,28 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     let mut rooms = state.rooms.lock().await;
 
     let room_state = rooms
-        .entry(room_id.to_string())
-        .or_insert_with(|| {
-            let (tx, _rx) = broadcast::channel(100);
+        .entry(room_id)
+        .or_insert_with(|| 
             RoomState {
-                tx,
-                members: HashSet::new()
-            }
+                members: HashMap::new(),
         })
         .clone();
 
     drop(rooms);
 
-    let mut rx = room_state.tx.subscribe();
+    let username = match UserRepo::fetch_by_id(&state.pool, user_id).await {
+        Ok(Some(user)) => user.name,
+        Ok(None) => {
+            eprintln!("User not found for id: {user_id}");
+            return;
+        }
+        Err(err) => {
+            eprintln!("Failed to fetch user {user_id}: {err}");
+            return;
+        }
+    };
+
+    let (mut out_tx, mut out_rx) = mpsc::channel::<ServerEvent>(100);
     let (mut sender, mut receiver) = socket.split();
 
     // send history
@@ -113,7 +126,7 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     // fan-out task
     let mut send_task = tokio::spawn(async move {
-        while let Ok(msg) = rx.recv().await {
+        while let Some(msg) = out_rx.next().await {
             match serde_json::to_string(&msg) {
                 Err(_) => {
                     break;
@@ -129,7 +142,6 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     // receive task
     let pool: sqlx::Pool<sqlx::Postgres> = state.pool.clone();
-    let tx_for_recv = room_state.tx.clone();
 
     let mut recv_task = tokio::spawn(async move {
         let mut receiver = receiver;
@@ -140,13 +152,13 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                         if let Ok(dto) = MessageDto::validate(MessageDto { room_id, content }) {
                             if let Ok(saved) = RoomRepo::create_message(&pool, dto, &user_id).await
                             {
-                                let _ = tx_for_recv.send(ServerEvent::ChatMessage(saved));
+                                let _ = out_tx.send(ServerEvent::ChatMessage(saved));
                             }
                         }
                     }
                     ClientEvent::Ping => {
                         if let Ok(_) = serde_json::to_string(&ServerEvent::Pong) {
-                            let _ = tx_for_recv.send(ServerEvent::Pong);
+                            let _ = out_tx.send(ServerEvent::Pong);
                         }
                     }
                 }
@@ -203,6 +215,4 @@ pub async fn get_room_membership_handler(
     )))
 }
 
-pub async fn get_room_members() {
-
-}
+pub async fn get_room_members() {}
