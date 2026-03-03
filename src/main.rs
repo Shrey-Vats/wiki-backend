@@ -2,7 +2,7 @@ use std::{collections::HashMap, env, sync::{Arc}};
 use tokio::sync::{broadcast, Mutex};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{ modules::{progress::service::ProgressService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
+use crate::{ modules::{progress::service::ProgressService, rooms::service::RoomService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
 use axum::{http::{HeaderValue, Method, header}, response::Result};
 use dotenvy::dotenv;
 use jsonwebtoken::{DecodingKey, EncodingKey};
@@ -31,7 +31,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         jwt_encoding: EncodingKey::from_secret(secret.as_bytes()),
         todo_service: TodoService::new(pool.clone()),
         user_service: UserService::new(pool.clone()),
-        progress_service: ProgressService::new(pool),
+        progress_service: ProgressService::new(pool.clone()),
+        room_service: RoomService::new(pool),
         rooms: Arc::new(Mutex::new(HashMap::new())),
     };
 

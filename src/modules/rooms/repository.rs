@@ -7,7 +7,10 @@ member -> join, remove, unjoin
 use sqlx::{PgPool, Result};
 use uuid::Uuid;
 
-use crate::modules::rooms::model::{Member, Message, MessageDto, MessageResponse, Room, RoomDto};
+use crate::{
+    common::error::AppError,
+    modules::rooms::model::{Member, Message, MessageDto, MessageResponse, Room, RoomDto},
+};
 
 pub struct RoomRepo;
 
@@ -61,6 +64,29 @@ impl RoomRepo {
         Ok(rooms)
     }
 
+    pub async fn get_all_joined_rooms(pool: &PgPool, user_id: &Uuid) -> Result<Vec<Room>> {
+        let rooms = sqlx::query_as!(
+            Room,
+            r#"
+                SELECT 
+                    m.room_id AS id,
+                    r.owner_id,
+                    r.name,
+                    r.description,
+                    r.profile_pic,
+                    r.created_at
+                FROM members m
+                JOIN rooms r ON m.room_id = r.id
+                WHERE m.user_id = $1
+            "#,
+            user_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rooms)
+    }
+
     pub async fn create_message(
         pool: &PgPool,
         message: MessageDto,
@@ -93,9 +119,10 @@ impl RoomRepo {
         Ok(message)
     }
 
-    //TODO: implement update, delete fn their
-
-    pub async fn load_recent_messages(pool: &PgPool, room_id: Uuid) -> Result<Vec<MessageResponse>> {
+    pub async fn load_recent_messages(
+        pool: &PgPool,
+        room_id: Uuid,
+    ) -> Result<Vec<MessageResponse>> {
         let message: Vec<MessageResponse> = sqlx::query_as!(
             MessageResponse,
             r#"
@@ -118,20 +145,66 @@ impl RoomRepo {
         Ok(message)
     }
 
-    pub async fn join_room(pool: &PgPool, room_id: Uuid, user_id: Uuid) -> Result<Member> {
-        let member = sqlx::query_as!(
-            Member,
+    pub async fn join_room(pool: &PgPool, room_id: &Uuid, user_id: &Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!(
             r#"
             INSERT INTO members (user_id, room_id)
             VALUES ($1, $2)
-            RETURNING user_id, room_id
             "#,
             user_id,
             room_id
         )
+        .execute(pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to leave room".into()));
+        }
+
+        Ok(())
+    }
+
+    pub async fn leave_room(pool: &PgPool, room_id: &Uuid, user_id: &Uuid) -> Result<(), AppError> {
+        let result = sqlx::query!(
+            r#"
+            DELETE from members
+            WHERE room_id = $1 AND user_id = $2
+            "#,
+            room_id,
+            user_id
+        )
+        .execute(pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(AppError::Failed("Failed to leave room".into()));
+        }
+
+        Ok(())
+    }
+
+    pub async fn is_member(
+        pool: &PgPool,
+        user_id: &Uuid,
+        room_id: &Uuid,
+    ) -> Result<Option<bool>, AppError> {
+        let exists = sqlx::query_scalar!(
+            r#"
+            SELECT EXISTS (
+                SELECT 1 FROM members
+                WHERE room_id = $1 AND user_id = $2
+            )
+            "#,
+            room_id,
+            user_id
+        )
         .fetch_one(pool)
         .await?;
 
-        Ok(member)
+        Ok(exists)
+    }
+
+    pub async fn get_room_members(pool: &PgPool, room_id: &Uuid, user_id: &Uuid) {
+        // let members = sqlx::query_as!()
     }
 }

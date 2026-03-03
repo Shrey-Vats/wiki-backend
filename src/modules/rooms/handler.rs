@@ -5,11 +5,9 @@ use crate::{
     },
     modules::{
         rooms::{
-            model::{
-                ChatMessage, ClientEvent, MessageDto, MessageType, RoomDto,
-                ServerEvent,
-            },
+            model::{ChatMessage, ClientEvent, MessageDto, MessageType, RoomDto, ServerEvent},
             repository::RoomRepo,
+            service::RoomService,
         },
         user::{model::UserId, repository::UserRepo},
     },
@@ -74,8 +72,14 @@ pub async fn ws_handler(
     State(state): State<AppState>,
     Path(room_id): Path<Uuid>,
     Extension(user_id): Extension<UserId>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handler_socket(socket, state, room_id, user_id.0))
+) -> Result<impl IntoResponse, impl IntoResponse> {
+    let can_join = state.room_service.clone().get_user_join_status(&room_id, &user_id.0).await.map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    if !can_join {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    Ok(ws.on_upgrade(move |socket| handler_socket(socket, state, room_id, user_id.0)))
 }
 
 pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, user_id: Uuid) {
@@ -179,3 +183,44 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
         }
     }
 }
+
+pub async fn join_room_handler(
+    State(state): State<AppState>,
+    Extension(user_id): Extension<UserId>,
+    Path(room_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    state.room_service.join_room(&room_id, &user_id.0).await?;
+
+    Ok(Json(ApiResponse::success(
+        "User joined the room successfully",
+        None::<()>,
+    )))
+}
+
+pub async fn leave_room_handler(
+    State(state): State<AppState>,
+    Extension(user_id): Extension<UserId>,
+    Path(room_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    state.room_service.leave_room(&room_id, &user_id.0).await?;
+
+    Ok(Json(ApiResponse::success("", None::<()>)))
+}
+
+pub async fn get_room_membership_handler(
+    State(state): State<AppState>,
+    Extension(user_id): Extension<UserId>,
+    Path(room_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<impl serde::Serialize>>, AppError> {
+    let room = state
+        .room_service
+        .get_user_join_status(&room_id, &user_id.0)
+        .await?;
+
+    Ok(Json(ApiResponse::success(
+        "User join ststus fetch successfuly",
+        room,
+    )))
+}
+
+pub async fn get_room_members() {}
