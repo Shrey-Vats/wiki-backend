@@ -62,13 +62,41 @@ impl RoomService {
         Ok(is_member)
     }
 
-    
+    pub async fn register_member(
+        state: &AppState,
+        room_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        tx: mpsc::Sender<ServerEvent>,
+    ) {
+        let mut rooms = state.rooms.lock().await;
+        let room = rooms.entry(room_id).or_insert(RoomState {members: HashMap::new()});
 
-    pub async fn broadcast_message(state: &AppState, room_id: &Uuid, user_id: &Uuid, server_event: ServerEvent) {
+        room.members.insert(user_id, Member {username, tx});
+    }
+
+    pub async fn unregister_member(state: &AppState, room_id: Uuid, user_id: &Uuid) {
+        let mut rooms = state.rooms.lock().await;
+
+        if let Some(room) = rooms.get_mut(&room_id) {
+            room.members.remove(user_id);
+        }
+    }
+
+    pub async fn broadcast_presence(state: &AppState, room_id: &Uuid, username: String, kind: PresenceKind) {
+        let rooms = state.rooms.lock().await;
+        if let Some(room) = rooms.get(room_id) {
+            for member in room.members.values() {
+                let _ = member.tx.send(ServerEvent::Presence { user: username.clone(), kind }).await;
+            }
+        }
+    }
+
+    pub async fn broadcast_message(state: &AppState, room_id: &Uuid, server_event: ServerEvent) {
         let rooms = state.rooms.lock().await;
         if let Some(room) = rooms.get(room_id) {
             for m in room.members.values() {
-                let _ = m.tx.send(server_event.clone());
+                let _ = m.tx.send(server_event.clone()).await;
             }
         }
     }

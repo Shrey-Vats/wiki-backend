@@ -93,12 +93,9 @@ pub async fn ws_handler(
 pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, user_id: Uuid) {
     let mut rooms = state.rooms.lock().await;
 
-    let room_state = rooms
-        .entry(room_id)
-        .or_insert_with(|| RoomState {
-            members: HashMap::new(),
-        })
-        .clone();
+    let room_state: &mut RoomState = rooms.entry(room_id).or_insert_with(|| RoomState {
+        members: HashMap::new(),
+    });
 
     drop(rooms);
 
@@ -115,6 +112,11 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     };
 
     let (mut out_tx, mut out_rx) = mpsc::channel::<ServerEvent>(100);
+
+    // Join Notification
+    RoomService::register_member(&state, room_id, user_id, username.clone(), out_tx).await;
+    RoomService::broadcast_presence(&state, &room_id, username.clone(), PresenceKind::Join).await;
+
     let (mut sender, mut receiver) = socket.split();
 
     // send history
@@ -144,6 +146,8 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     // receive task
     let pool: sqlx::Pool<sqlx::Postgres> = state.pool.clone();
+    let state_clone = state.clone();
+    let username_clone = username.clone();
 
     let mut recv_task = tokio::spawn(async move {
         let mut receiver = receiver;
@@ -154,23 +158,31 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                         if let Ok(dto) = MessageDto::validate(MessageDto { room_id, content }) {
                             if let Ok(saved) = RoomRepo::create_message(&pool, dto, &user_id).await
                             {
-                                RoomService::broadcast_message(&state, &room_id, &user_id, ServerEvent::ChatMessage(saved)).await;
+                                RoomService::broadcast_message(
+                                    &state_clone,
+                                    &room_id,
+                                    ServerEvent::ChatMessage(saved),
+                                )
+                                .await;
                             }
                         }
                     }
                     ClientEvent::Ping => {
-                        if let Ok(_) = serde_json::to_string(&ServerEvent::Pong) {
-
-                            RoomService::broadcast_message(
-                                &state,
-                                &room_id,
-                                &user_id,
-                                ServerEvent::Pong,
-                            )
+                        RoomService::broadcast_message(&state_clone, &room_id, ServerEvent::Pong)
                             .await;
-                        }
                     }
- }
+                    ClientEvent::Typing { is_typing } => {
+                        RoomService::broadcast_message(
+                            &state_clone,
+                            &room_id,
+                            ServerEvent::Typing {
+                                username: username_clone.clone(),
+                                is_typing,
+                            },
+                        )
+                        .await;
+                    }
+                }
             }
         }
     });
@@ -183,6 +195,17 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
             send_task.abort()
         }
     }
+    // leave notification
+    RoomService::unregister_member(&state, room_id.clone(), &user_id).await;
+    RoomService::broadcast_message(
+        &state,
+        &room_id,
+        ServerEvent::Presence {
+            user: username.clone(),
+            kind: PresenceKind::Leave,
+        },
+    )
+    .await;
 }
 
 pub async fn join_room_handler(

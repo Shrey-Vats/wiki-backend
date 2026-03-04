@@ -37,16 +37,12 @@ pub struct MessageResponse {
     pub created_at: OffsetDateTime
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum MessageType {
-    System,
-    User
-}
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "event", content = "payload")]
 pub enum ClientEvent {
     ChatSend {content: String},
-    Ping
+    Ping,
+    Typing {is_typing: bool}
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -56,9 +52,10 @@ pub enum ServerEvent {
     History(Vec<MessageResponse>),
     Presence { user: String, kind: PresenceKind },
     Pong,
+    Typing {username: String, is_typing: bool}
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Copy)]
 pub enum PresenceKind {
     Join,
     Leave
