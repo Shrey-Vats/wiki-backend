@@ -117,6 +117,9 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     RoomService::register_member(&state, room_id, user_id, username.clone(), out_tx).await;
     RoomService::broadcast_presence(&state, &room_id, username.clone(), PresenceKind::Join).await;
 
+    let members = RoomService::get_active_members(&state, &room_id).await;
+    RoomService::broadcast_message(&state, &room_id, ServerEvent::ActiveMembers(members)).await;
+
     let (mut sender, mut receiver) = socket.split();
 
     // send history
@@ -181,6 +184,10 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                             },
                         )
                         .await;
+                    },
+                    ClientEvent::ActiveMembers => {
+                        let members = RoomService::get_active_members(&state_clone, &room_id).await;
+                        RoomService::broadcast_message(&state_clone, &room_id, ServerEvent::ActiveMembers(members)).await;
                     }
                 }
             }
@@ -206,6 +213,10 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
         },
     )
     .await;
+
+    let members = RoomService::get_active_members(&state, &room_id).await;
+    RoomService::broadcast_message(&state, &room_id, ServerEvent::ActiveMembers(members)).await;
+
 }
 
 pub async fn join_room_handler(

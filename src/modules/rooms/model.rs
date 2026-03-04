@@ -3,7 +3,7 @@ use sqlx::prelude::FromRow;
 use time::{OffsetDateTime};
 use uuid::Uuid;
 
-use crate::common::error::{AppError, ValidationError};
+use crate::{common::error::{AppError, ValidationError}, modules::rooms::service::Username};
 
 #[derive(FromRow, Serialize)]
 pub struct Room {
@@ -42,7 +42,8 @@ pub struct MessageResponse {
 pub enum ClientEvent {
     ChatSend {content: String},
     Ping,
-    Typing {is_typing: bool}
+    Typing {is_typing: bool},
+    ActiveMembers
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -52,7 +53,8 @@ pub enum ServerEvent {
     History(Vec<MessageResponse>),
     Presence { user: String, kind: PresenceKind },
     Pong,
-    Typing {username: String, is_typing: bool}
+    Typing {username: String, is_typing: bool},
+    ActiveMembers (Vec<Username>)
 }
 
 #[derive(Clone, Serialize, Deserialize, Copy)]

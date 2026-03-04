@@ -15,6 +15,8 @@ use crate::{
     state::{AppState, Member, RoomState},
 };
 
+pub type Username = String;
+
 #[derive(Debug, Clone)]
 pub struct RoomService {
     pub pool: PgPool,
@@ -99,5 +101,19 @@ impl RoomService {
                 let _ = m.tx.send(server_event.clone()).await;
             }
         }
+    }
+
+    pub async fn get_active_members(state: &AppState, room_id: &Uuid) -> Vec<Username> {
+        let rooms = state.rooms.lock().await;
+        let mut members: Vec<Username> = Vec::new();
+
+        if let Some(room) = rooms.get(room_id) {
+
+            for m in room.members.values() {
+                members.push(m.username.to_string());
+            }
+        }
+
+        members
     }
 }
