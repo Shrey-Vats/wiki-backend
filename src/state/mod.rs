@@ -1,21 +1,20 @@
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{collections::{HashMap}, sync::Arc};
 
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool};
 use uuid::Uuid;
-use tokio::sync::{Mutex, broadcast, mpsc};
+use tokio::sync::{Mutex, mpsc};
 
 use crate::modules::{progress::service::ProgressService, rooms::{model::{ServerEvent}, service::RoomService}, todo::service::TodoService, user::service::UserService};
 
-type Username = String;
 type RoomId = uuid::Uuid;
 type UserId = uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Member {
-    username: String,
-    tx: mpsc::Sender<ServerEvent>
+    pub username: String,
+    pub tx: mpsc::Sender<ServerEvent>
 }
 
 #[derive(Clone)]

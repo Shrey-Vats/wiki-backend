@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
 use crate::{
     common::{
@@ -7,10 +7,11 @@ use crate::{
     },
     modules::{
         rooms::{
-            model::{ClientEvent, MessageDto, RoomDto, ServerEvent},
+            model::{ClientEvent, MessageDto, PresenceKind, RoomDto, ServerEvent},
             repository::RoomRepo,
+            service::RoomService,
         },
-        user::{ model::UserId, repository::UserRepo},
+        user::{model::UserId, repository::UserRepo},
     },
     state::{AppState, RoomState},
 };
@@ -23,7 +24,9 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use futures::{SinkExt, StreamExt, channel::mpsc};
+use futures::{SinkExt, StreamExt};
+use tokio::sync::mpsc;
+
 use uuid::Uuid;
 
 pub async fn create_room_handler(
@@ -92,9 +95,8 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     let room_state = rooms
         .entry(room_id)
-        .or_insert_with(|| 
-            RoomState {
-                members: HashMap::new(),
+        .or_insert_with(|| RoomState {
+            members: HashMap::new(),
         })
         .clone();
 
@@ -126,7 +128,7 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     // fan-out task
     let mut send_task = tokio::spawn(async move {
-        while let Some(msg) = out_rx.next().await {
+        while let Some(msg) = out_rx.recv().await {
             match serde_json::to_string(&msg) {
                 Err(_) => {
                     break;
@@ -152,16 +154,23 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                         if let Ok(dto) = MessageDto::validate(MessageDto { room_id, content }) {
                             if let Ok(saved) = RoomRepo::create_message(&pool, dto, &user_id).await
                             {
-                                let _ = out_tx.send(ServerEvent::ChatMessage(saved));
+                                RoomService::broadcast_message(&state, &room_id, &user_id, ServerEvent::ChatMessage(saved)).await;
                             }
                         }
                     }
                     ClientEvent::Ping => {
                         if let Ok(_) = serde_json::to_string(&ServerEvent::Pong) {
-                            let _ = out_tx.send(ServerEvent::Pong);
+
+                            RoomService::broadcast_message(
+                                &state,
+                                &room_id,
+                                &user_id,
+                                ServerEvent::Pong,
+                            )
+                            .await;
                         }
                     }
-                }
+ }
             }
         }
     });

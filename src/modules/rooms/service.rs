@@ -1,12 +1,18 @@
+use std::collections::HashMap;
+
 use sqlx::PgPool;
+use tokio::sync::mpsc;
+
+
 use uuid::Uuid;
 
 use crate::{
     common::error::AppError,
     modules::rooms::{
-        model::{Member, MessageDto, MessageResponse},
+        model::{MessageDto, MessageResponse, PresenceKind, ServerEvent},
         repository::RoomRepo,
     },
+    state::{AppState, Member, RoomState},
 };
 
 #[derive(Debug, Clone)]
@@ -54,5 +60,16 @@ impl RoomService {
             .ok_or_else(|| AppError::Failed("Failed to fetch user join status".into()))?;
 
         Ok(is_member)
+    }
+
+    
+
+    pub async fn broadcast_message(state: &AppState, room_id: &Uuid, user_id: &Uuid, server_event: ServerEvent) {
+        let rooms = state.rooms.lock().await;
+        if let Some(room) = rooms.get(room_id) {
+            for m in room.members.values() {
+                let _ = m.tx.send(server_event.clone());
+            }
+        }
     }
 }
