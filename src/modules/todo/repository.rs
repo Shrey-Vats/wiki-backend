@@ -227,8 +227,7 @@ impl TodoRepo {
             todo_id
         )
         .fetch_all(pool)
-        .await
-        .map_err(|_| AppError::DbError)?;
+        .await?;
 
         Ok(all_tag_todo)
     }
@@ -264,8 +263,7 @@ impl TodoRepo {
             tag_id
         )
         .fetch_optional(pool)
-        .await
-        .map_err(|_| AppError::DbError)?;
+        .await?;
 
         Ok(tag)
     }
@@ -284,8 +282,7 @@ impl TodoRepo {
             category_id
         )
         .fetch_optional(pool)
-        .await
-        .map_err(|_| AppError::DbError)?;
+        .await?;
 
         Ok(category)
     }

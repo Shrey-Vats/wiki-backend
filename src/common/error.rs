@@ -15,8 +15,6 @@ pub enum AppError {
     Failed(String),
     #[error(transparent)]
     Db(#[from] sqlx::Error),
-    #[error("Database error")]
-    DbError,
     #[error(transparent)]
     NotFound(#[from] NotFoundError),
 }
@@ -63,13 +61,14 @@ pub enum ValidationError {
     UserAlreadyExits,
     #[error("Failed to create token")]
     FailedToCreateToken,
+    #[error("User profile is private!")]
+    UnauthorizedAccess
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
             AppError::Validation(e) => (StatusCode::BAD_REQUEST, e.to_string()),
-            AppError::DbError => (StatusCode::INTERNAL_SERVER_ERROR, "Database error".into()),
             AppError::Db(error) => map_sqlx_error(error),
             AppError::NotFound(e) => (StatusCode::NOT_FOUND, e.to_string()),
             AppError::Failed(message) => (StatusCode::INTERNAL_SERVER_ERROR, message),
