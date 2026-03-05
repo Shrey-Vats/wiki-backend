@@ -5,7 +5,7 @@ use time::{Date, format_description::well_known::Iso8601};
 
 use crate::{
     common::{error::AppError, response::ApiResponse},
-    modules::{progress::{model::{DailyProgressDto, DailyProgressTodoResponse}, service::ProgressService}, user::model::UserId},
+    modules::{progress::{model::{DailyProgressDto, DailyProgressTodoResponse, IsExitsResponse}, service::ProgressService}, user::model::UserId},
     state::AppState,
 };
 
@@ -79,9 +79,12 @@ pub async fn is_progress_exits_handler(
     let day = Date::parse(&day, &Iso8601::DATE)
     .map_err(|_| AppError::Failed("Invalid date. Use YYYY-MM-DD".into()))?;
 
-    let id = ProgressService::fetch_progress_id(&state.progress_service, &user_id.0, day).await?;
+    if let Some(id) = ProgressService::fetch_progress_id(&state.progress_service, &user_id.0, day).await? {
+        return Ok(Json(ApiResponse::success("Progress exits!", IsExitsResponse {id: Some(id), is_exits: true})));
+    } else {
+        return Ok(Json(ApiResponse::success("Progress doesn't exits!", IsExitsResponse {id: None, is_exits: false})));
+    };
 
-    Ok(Json(ApiResponse::success("Progress exits!", id)))
 }
 
 pub async fn delete_daily_progress_todo_handler(

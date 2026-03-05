@@ -74,3 +74,8 @@ pub struct DailyProgressDto {
 //     pub todo_id: Uuid,
 //     pub is_done: bool
 // }
+#[derive(Debug, Deserialize, Serialize)]
+pub struct IsExitsResponse {
+    pub id: Option<Uuid>,
+    pub is_exits: bool
+}
