@@ -37,9 +37,9 @@ pub struct AppState {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub user_id: Uuid,
-    // pub role: String,
+    pub name: String,
+    pub username: String,
+    pub email: String,
     pub exp: usize, // expiry timestamp
     pub iat: usize, // current timestamp
 }
-
-

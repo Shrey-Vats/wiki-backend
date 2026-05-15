@@ -5,11 +5,14 @@ use uuid::Uuid;
 
 use crate::state::{Claims};
 
-pub async fn create_jwt_token(user_id: Uuid, encoding_key: EncodingKey) -> Result<String> {
+pub async fn create_jwt_token(user_id: Uuid, name: String, username: String, email: String, encoding_key: EncodingKey) -> Result<String> {
     let now = Utc::now();
 
     let claims = Claims {
         user_id: user_id,
+        email,
+        name,
+        username,
         iat: now.timestamp() as usize,
         exp: (now + DurationC::days(7)).timestamp() as usize,
     };

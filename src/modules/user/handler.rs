@@ -21,7 +21,7 @@ pub async fn create_user(
 
     let user = state.user_service.create(new_user).await?;
 
-    let jwt = create_jwt_token(user.id, state.jwt_encoding)
+    let jwt = create_jwt_token(user.id, user.name.clone(), user.username.clone(), user.email.clone(), state.jwt_encoding)
         .await
         .map_err(|_| AppError::Validation(ValidationError::FailedToCreateToken))?;
 
@@ -42,7 +42,7 @@ pub async fn login_user(
 
     let user = state.user_service.login(new_user).await?;
 
-    let jwt = create_jwt_token(user.id, state.jwt_encoding)
+    let jwt = create_jwt_token(user.id, user.name.clone(), user.username.clone(), user.email.clone(), state.jwt_encoding)
         .await
         .map_err(|_| AppError::Validation(ValidationError::FailedToCreateToken))?;
 
@@ -50,7 +50,7 @@ pub async fn login_user(
 
     Ok((
         jar,
-        Json(ApiResponse::success("User login successfuly", user)),
+        Json(ApiResponse::success("User login successfuly", user.clone())),
     ))
 }
 
