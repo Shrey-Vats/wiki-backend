@@ -90,7 +90,7 @@ impl RoomService {
         let rooms = state.rooms.lock().await;
         if let Some(room) = rooms.get(room_id) {
             for member in room.members.values() {
-                let _ = member.tx.send(ServerEvent::Presence { user: username.clone(), kind }).await;
+                let _ = member.tx.send(ServerEvent::Presence { user: username.clone(), kind: kind.clone() }).await;
             }
         }
     }
@@ -115,7 +115,7 @@ impl RoomService {
             }
         }
 
-        UserRepo::fetch_users_by_username(&state.pool, members).await
+        UserRepo::fetch_all_users(&state.pool, members).await
     }
 
     pub async fn return_message(state: &AppState, room_id: &Uuid, user_id: &Uuid, server_event: ServerEvent) {

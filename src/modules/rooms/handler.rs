@@ -99,8 +99,8 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
 
     drop(rooms);
 
-    let username = match UserRepo::fetch_by_id(&state.pool, user_id).await {
-        Ok(Some(user)) => user.username,
+    let user = match UserRepo::fetch_by_id(&state.pool, user_id).await {
+        Ok(Some(user)) => user,
         Ok(None) => {
             eprintln!("User not found for id: {user_id}");
             return;
@@ -114,8 +114,8 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     let (mut out_tx, mut out_rx) = mpsc::channel::<ServerEvent>(100);
 
     // Join Notification
-    RoomService::register_member(&state, room_id, user_id, username.clone(), out_tx).await;
-    RoomService::broadcast_presence(&state, &room_id, username.clone(), PresenceKind::Join).await;
+    RoomService::register_member(&state, room_id, user_id, user.username.clone(), out_tx).await;
+    RoomService::broadcast_presence(&state, &room_id, user.username.clone(), PresenceKind::Join { id: user.id, name: user.name, username: user.username.clone() }).await;
 
     let (mut sender, mut receiver) = socket.split();
 
@@ -147,7 +147,7 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     // receive task
     let pool: sqlx::Pool<sqlx::Postgres> = state.pool.clone();
     let state_clone = state.clone();
-    let username_clone = username.clone();
+    let username_clone = user.username.clone();
 
     let mut recv_task = tokio::spawn(async move {
         let mut receiver = receiver;
@@ -155,8 +155,13 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
             if let Ok(evt) = serde_json::from_str::<ClientEvent>(&text) {
                 match evt {
                     ClientEvent::ChatSend { content, parent_id } => {
-                        if let Ok(dto) = MessageDto::validate(MessageDto { room_id, content, parent_id }) {
-                            if let Ok(saved) = RoomRepo::create_message(&pool, dto, &user_id, parent_id).await
+                        if let Ok(dto) = MessageDto::validate(MessageDto {
+                            room_id,
+                            content,
+                            parent_id,
+                        }) {
+                            if let Ok(saved) =
+                                RoomRepo::create_message(&pool, dto, &user_id, parent_id).await
                             {
                                 RoomService::broadcast_message(
                                     &state_clone,
@@ -181,17 +186,19 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
                             },
                         )
                         .await;
-                    },
+                    }
                     ClientEvent::ActiveMembers => {
-                        if let Ok(members) = RoomService::get_active_members(&state_clone, &room_id).await {
-                            RoomService::return_message(&state_clone, &room_id, &user_id, ServerEvent::ActiveMembers(members)).await;
+                        if let Ok(members) =
+                            RoomService::get_active_members(&state_clone, &room_id).await
+                        {
+                            RoomService::return_message(
+                                &state_clone,
+                                &room_id,
+                                &user_id,
+                                ServerEvent::ActiveMembers(members),
+                            )
+                            .await;
                         }
-                    },
-                    ClientEvent::AllMembers => {
-                       let memebers = RoomRepo::get_room_members(&pool, &room_id).await;
-                       if let Ok(mem) = memebers {
-                        RoomService::return_message(&state_clone, &room_id, &user_id, ServerEvent::AllMembers(mem)).await;
-                       } 
                     }
                 }
             }
@@ -212,8 +219,8 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
         &state,
         &room_id,
         ServerEvent::Presence {
-            user: username.clone(),
-            kind: PresenceKind::Leave,
+            user: user.username.clone(),
+            kind: PresenceKind::Leave { id: user.id },
         },
     )
     .await;
@@ -221,7 +228,6 @@ pub async fn handler_socket(socket: WebSocket, state: AppState, room_id: Uuid, u
     if let Ok(members) = RoomService::get_active_members(&state, &room_id).await {
         RoomService::broadcast_message(&state, &room_id, ServerEvent::ActiveMembers(members)).await;
     };
-
 }
 
 pub async fn join_room_handler(
@@ -263,4 +269,21 @@ pub async fn get_room_membership_handler(
     )))
 }
 
-pub async fn get_room_members() {}
+pub async fn get_room_members_handler(
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>,
+) -> Result<(StatusCode, Json<ApiResponse<impl serde::Serialize>>), AppError> {
+    let room_members = RoomService::get_room_messages(state.room_service, room_id).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse::success("All user fetch successfully", room_members))
+    ))
+}
+
+pub async fn send_chat_messages(
+    State(state): State<AppState>,
+    Path(room_id): Path<Uuid>
+) {
+
+}

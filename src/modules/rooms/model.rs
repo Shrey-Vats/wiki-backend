@@ -46,7 +46,6 @@ pub enum ClientEvent {
     Ping,
     Typing {is_typing: bool},
     ActiveMembers,
-    AllMembers
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -57,14 +56,13 @@ pub enum ServerEvent {
     Presence { user: String, kind: PresenceKind },
     Pong,
     Typing {username: String, is_typing: bool},
-    ActiveMembers (Vec<Members>),
-    AllMembers (Vec<Members>)
+    ActiveMembers (Vec<Members>)
 }
 
-#[derive(Clone, Serialize, Deserialize, Copy)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum PresenceKind {
-    Join,
-    Leave
+    Join { id: Uuid, name: String, username: String },
+    Leave {id: Uuid}
 }
 
 #[derive(Clone, Deserialize, Serialize)]

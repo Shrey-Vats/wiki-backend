@@ -99,7 +99,7 @@ impl UserRepo {
         Ok(user)
     }
 
-    pub async fn fetch_users_by_username(pool: &PgPool, usernames: Vec<Username>) -> Result<Vec<Members>, AppError> {
+    pub async fn fetch_all_users(pool: &PgPool, usernames: Vec<Username>) -> Result<Vec<Members>, AppError> {
         let users = sqlx::query_as!(
             Members,
             r#"
