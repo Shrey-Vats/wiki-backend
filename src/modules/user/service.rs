@@ -15,6 +15,7 @@ pub struct UserService {
 }
 
 impl UserService {
+    
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }

@@ -14,7 +14,7 @@ pub struct User {
     pub is_public: bool
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct UserResponseDto {
     pub id: Uuid,
     pub name: String,
