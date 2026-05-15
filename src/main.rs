@@ -1,27 +1,37 @@
-use std::{collections::HashMap, env, sync::{Arc}};
-use tokio::sync::{broadcast, Mutex};
+use std::{collections::HashMap, env, sync::Arc};
+use tokio::sync::{Mutex, broadcast};
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::{ modules::{progress::service::ProgressService, rooms::service::RoomService, todo::service::TodoService, user::service::UserService}, routes::create_app, state::AppState, utils::db::init_db_pool};
-use axum::{http::{HeaderValue, Method, header}, response::Result};
+use crate::{
+    modules::{
+        progress::service::ProgressService, rooms::service::RoomService,
+        todo::service::TodoService, user::service::UserService,
+    },
+    routes::create_app,
+    state::AppState,
+    utils::{config::Config, db::init_db_pool},
+};
+use axum::{
+    http::{HeaderValue, Method, header},
+    response::Result,
+};
 use dotenvy::dotenv;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use sqlx::PgPool;
 
+mod common;
 mod middleware;
+mod modules;
 mod routes;
 mod state;
 mod utils;
-mod common;
-mod modules;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     dotenv().ok();
 
-    let db_url = env::var("DATABASE_URL")?;
-    let secret = env::var("JWT_SECRET")?;
+    let db_url = Config::DatabaseUrl.from_env()?;
+    let secret = Config::JsonWebTokenSecret.from_env()?;
 
     let pool: PgPool = init_db_pool(&db_url).await?;
 
@@ -36,16 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         rooms: Arc::new(Mutex::new(HashMap::new())),
     };
 
-     
-let cors = CorsLayer::new()
-    .allow_origin(
-        "http://localhost:3001"
-            .parse::<HeaderValue>()
-            .unwrap()
-    )
-    .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-    .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
-    .allow_credentials(true);
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3001".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .allow_credentials(true);
 
     let app = create_app(state).layer(cors);
 
