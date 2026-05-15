@@ -220,8 +220,9 @@ impl TodoRepo {
         let all_tag_todo = sqlx::query_as!(
             TagTodo,
             r#"
-            SELECT todo_id, tag_id
+            SELECT tag_id, t.name, t.slug
             FROM tag_todo
+            JOIN tags t ON t.id = tag_id
             WHERE todo_id = $1
             "#,
             todo_id

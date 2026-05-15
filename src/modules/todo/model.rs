@@ -75,8 +75,9 @@ pub struct Category {
 
 #[derive(FromRow)]
 pub struct TagTodo {
-    pub todo_id: Uuid,
     pub tag_id: Uuid,
+    pub name: String,
+    pub slug: String
 }
 
 pub struct NewTodo {
